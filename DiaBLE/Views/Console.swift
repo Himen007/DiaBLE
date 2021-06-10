@@ -21,7 +21,7 @@ struct Console: View {
     @EnvironmentObject var settings: Settings
 
     @State private var showingNFCAlert: Bool = false
-    @State private var showingUnlockAlert: Bool = false
+    @State private var showingUnlockConfirmationDialog: Bool = false
     @State private var showingFilterField: Bool = false
     @State private var filterString: String = ""
 
@@ -113,7 +113,7 @@ struct Console: View {
                     Button {
                         if app.main.nfc.isAvailable {
                             app.main.settings.logging = true
-                            showingUnlockAlert = true
+                            showingUnlockConfirmationDialog = true
                         } else {
                             showingNFCAlert = true
                         }
@@ -137,11 +137,10 @@ struct Console: View {
                     Label {
                         Text("Tools")
                     } icon: {
-                        // FIXME: stacked image disappears in SwiftUI 3
-                        // VStack(spacing: 0) {
-                        Image(systemName: "wrench.and.screwdriver")
-                        // Text("Tools").font(.footnote)
-                        // }
+                        VStack(spacing: 0) {
+                            Image(systemName: "wrench.and.screwdriver")
+                            Text("Tools").font(.footnote)
+                        }
                     }
                 }
             }
@@ -151,16 +150,12 @@ struct Console: View {
                 title: Text("NFC not supported"),
                 message: Text("This device doesn't allow scanning the Libre."))
         }
-        .alert(isPresented: $showingUnlockAlert) {
-            Alert(
-                title: Text("Confirm to unlock"),
-                message: Text("Unlocking the Libre 2 is not reversible and will make it unreadable by LibreLink and other apps."),
-                primaryButton: .cancel(),
-                secondaryButton: .destructive(Text("Unlock")) {
+        .confirmationDialog("Unlocking the Libre 2 is not reversible and will make it unreadable by LibreLink and other apps.", isPresented: $showingUnlockConfirmationDialog, titleVisibility: .visible) {
+            Button("Unlock", role: .destructive) {
                 app.main.nfc.taskRequest = .unlock
             }
-            )
         }
+
     }
 }
 
