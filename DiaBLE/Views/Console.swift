@@ -21,6 +21,7 @@ struct Console: View {
     @EnvironmentObject var settings: Settings
 
     @State private var showingNFCAlert: Bool = false
+    @State private var showingUnlockAlert: Bool = false
     @State private var showingFilterField: Bool = false
     @State private var filterString: String = ""
 
@@ -57,8 +58,8 @@ struct Console: View {
                     } else {
                         Text(log.text.split(separator: "\n").filter({$0.lowercased().contains(filterString.lowercased()
                         )}).joined(separator: ("\n \n")) + "\n")
-                        .frame(maxWidth: .infinity, alignment: .topLeading)
-                        .padding(4)
+                            .frame(maxWidth: .infinity, alignment: .topLeading)
+                            .padding(4)
                     }
                 }
                 .font(.system(.footnote, design: .monospaced)).foregroundColor(Color(.lightGray))
@@ -71,15 +72,92 @@ struct Console: View {
         .navigationTitle("Console")
         .toolbar {
             ToolbarItemGroup(placement: .navigationBarTrailing) {
-                ConsoleToolbar(showingNFCAlert: $showingNFCAlert,
-                           showingFilterField: $showingFilterField,
-                           filterString: $filterString)
+                Button {
+                    withAnimation { showingFilterField.toggle() }
+                } label: {
+                    VStack(spacing: 0) {
+                        Image(systemName: filterString.isEmpty ? "line.horizontal.3.decrease.circle" : "line.horizontal.3.decrease.circle.fill")
+                        Text("Filter").font(.footnote)
+                    }
+                }
+
+                Menu {
+
+                    Button {
+                        if app.main.nfc.isAvailable {
+                            app.main.settings.logging = true
+                            app.main.nfc.taskRequest = .enableStreaming
+                        } else {
+                            showingNFCAlert = true
+                        }
+                    } label: {
+                        Label {
+                            Text("RePair Streaming")
+                        } icon: {
+                            Image("NFC").renderingMode(.template).resizable().frame(width: 26, height: 18)
+                        }
+                    }
+
+                    Button {
+                        if app.main.nfc.isAvailable {
+                            app.main.settings.logging = true
+                            app.main.nfc.taskRequest = .readFRAM
+                        } else {
+                            showingNFCAlert = true
+                        }
+                    } label: {
+                        Label("Read FRAM", systemImage: "memorychip")
+                    }
+
+                    Button {
+                        if app.main.nfc.isAvailable {
+                            app.main.settings.logging = true
+                            showingUnlockAlert = true
+                        } else {
+                            showingNFCAlert = true
+                        }
+                    } label: {
+                        Label("Unlock", systemImage: "lock.open")
+                    }
+
+                    Button {
+                        if app.main.nfc.isAvailable {
+                            app.main.settings.logging = true
+                            app.main.nfc.taskRequest = .dump
+                        } else {
+                            showingNFCAlert = true
+                        }
+                    } label: {
+                        Label("Dump Memory", systemImage: "cpu")
+                    }
+
+
+                } label: {
+                    Label {
+                        Text("Tools")
+                    } icon: {
+                        VStack(spacing: 0) {
+                            Image(systemName: "wrench.and.screwdriver")
+                            Text("Tools").font(.footnote)
+                        }
+                    }
+                }
             }
         }
         .alert(isPresented: $showingNFCAlert) {
             Alert(
                 title: Text("NFC not supported"),
                 message: Text("This device doesn't allow scanning the Libre."))
+        }
+        .alert(isPresented: $showingUnlockAlert) {
+            Alert(
+                title: Text("Confirm to unlock"),
+                message: Text("Unlocking the Libre 2 is not reversible and will make it unreadable by LibreLink and other apps."),
+                primaryButton: .cancel(),
+                secondaryButton: .destructive(Text("Unlock")) {
+                app.main.nfc.taskRequest = .unlock
+            }
+            )
         }
     }
 }
@@ -151,7 +229,7 @@ struct ConsoleSidebar: View {
 
             if !app.deviceState.isEmpty && app.deviceState != "Disconnected" {
                 Text(readingCountdown > 0 || app.deviceState == "Reconnecting..." ?
-                        "\(readingCountdown) s" : "")
+                     "\(readingCountdown) s" : "")
                     .fixedSize()
                     .font(Font.caption.monospacedDigit()).foregroundColor(.orange)
                     .onReceive(timer) { _ in
@@ -226,103 +304,6 @@ struct ConsoleSidebar: View {
             Spacer()
 
         }.font(.footnote)
-    }
-}
-
-
-struct ConsoleToolbar: View {
-    @EnvironmentObject var app: AppState
-
-    @Binding var showingNFCAlert: Bool
-    @Binding var showingFilterField: Bool
-    @Binding var filterString: String
-
-    @State var showingUnlockAlert: Bool = false
-
-    var body: some View {
-        HStack(alignment: .bottom) {
-
-            Button {
-                withAnimation { showingFilterField.toggle() }
-            } label: {
-                VStack(spacing: 0) {
-                    Image(systemName: filterString.isEmpty ? "line.horizontal.3.decrease.circle" : "line.horizontal.3.decrease.circle.fill").font(.title2)
-                    Text("Filter").font(.footnote)
-                }
-            }
-
-            Menu {
-
-                Button {
-                    if app.main.nfc.isAvailable {
-                        app.main.settings.logging = true
-                        app.main.nfc.taskRequest = .enableStreaming
-                    } else {
-                        showingNFCAlert = true
-                    }
-                } label: {
-                    Label {
-                        Text("RePair Streaming")
-                    } icon: {
-                        Image("NFC").renderingMode(.template).resizable().frame(width: 26, height: 18)
-                    }
-                }
-
-                Button {
-                    if app.main.nfc.isAvailable {
-                        app.main.settings.logging = true
-                        app.main.nfc.taskRequest = .readFRAM
-                    } else {
-                        showingNFCAlert = true
-                    }
-                } label: {
-                    Label("Read FRAM", systemImage: "memorychip")
-                }
-
-                Button {
-                    if app.main.nfc.isAvailable {
-                        app.main.settings.logging = true
-                        showingUnlockAlert = true
-                    } else {
-                        showingNFCAlert = true
-                    }
-                } label: {
-                    Label("Unlock", systemImage: "lock.open")
-                }
-
-                Button {
-                    if app.main.nfc.isAvailable {
-                        app.main.settings.logging = true
-                        app.main.nfc.taskRequest = .dump
-                    } else {
-                        showingNFCAlert = true
-                    }
-                } label: {
-                    Label("Dump Memory", systemImage: "cpu")
-                }
-
-
-            } label: {
-                Label {
-                    Text("Tools")
-                } icon: {
-                    VStack(spacing: 0) {
-                        Image(systemName: "wrench.and.screwdriver").font(.title3)
-                        Text("Tools").font(.footnote).fixedSize()
-                    }
-                }
-            }
-        }
-        .alert(isPresented: $showingUnlockAlert) {
-            Alert(
-                title: Text("Confirm to unlock"),
-                message: Text("Unlocking the Libre 2 is not reversible and will make it unreadable by LibreLink and other apps."),
-                primaryButton: .cancel(),
-                secondaryButton: .destructive(Text("Unlock")) {
-                    app.main.nfc.taskRequest = .unlock
-                }
-            )
-        }
     }
 }
 
