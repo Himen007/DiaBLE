@@ -42,7 +42,7 @@ struct Monitor: View {
                                 .foregroundColor(.black)
                                 .padding(10)
                                 .background(app.currentGlucose > 0 && (app.currentGlucose > Int(settings.alarmHigh) || app.currentGlucose < Int(settings.alarmLow)) ?
-                                                Color.red : app.currentGlucose < 0 ? Color.orange : Color.blue)
+                                            Color.red : app.currentGlucose < 0 ? Color.orange : Color.blue)
                                 .cornerRadius(5)
 
                             // TODO
@@ -72,7 +72,7 @@ struct Monitor: View {
 
                             if !app.deviceState.isEmpty && app.deviceState != "Disconnected" {
                                 Text(readingCountdown > 0 || app.deviceState == "Reconnecting..." ?
-                                        "\(readingCountdown) s" : "")
+                                     "\(readingCountdown) s" : "")
                                     .fixedSize()
                                     .font(Font.callout.monospacedDigit()).foregroundColor(.orange)
                                     .onReceive(timer) { _ in
@@ -105,11 +105,11 @@ struct Monitor: View {
                                 VStack {
                                     if app.device.battery > -1 {
                                         Text("Battery: ").foregroundColor(Color(.lightGray)) +
-                                            Text("\(app.device.battery)%").foregroundColor(app.device.battery > 10 ? .green : .red)
+                                        Text("\(app.device.battery)%").foregroundColor(app.device.battery > 10 ? .green : .red)
                                     }
                                     if app.device.rssi != 0  {
                                         Text("RSSI: ").foregroundColor(Color(.lightGray)) +
-                                            Text("\(app.device.rssi) dB")
+                                        Text("\(app.device.rssi) dB")
                                     }
                                 }
                             }
@@ -176,11 +176,12 @@ struct Monitor: View {
                                 showingNFCAlert = true
                             }
                         } label: {
-                            VStack(spacing: 0) {
-                                // original: .frame(width: 39, height: 27
-                                Image("NFC").renderingMode(.template).resizable().frame(width: 26, height: 18)
-                                Text("Scan").font(.footnote)
-                            }
+                            // FIXME: stacked image disappears in SwiftUI 3
+                            // VStack(spacing: 0) {
+                            // original: .frame(width: 39, height: 27
+                            Image("NFC").renderingMode(.template).resizable().frame(width: 26, height: 18)
+                            // Text("Scan").font(.footnote)
+                            // }
                         }
                     }
                 }

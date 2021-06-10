@@ -75,10 +75,11 @@ struct Console: View {
                 Button {
                     withAnimation { showingFilterField.toggle() }
                 } label: {
-                    VStack(spacing: 0) {
-                        Image(systemName: filterString.isEmpty ? "line.horizontal.3.decrease.circle" : "line.horizontal.3.decrease.circle.fill")
-                        Text("Filter").font(.footnote)
-                    }
+                    // FIXME: stacked image disappears in SwiftUI 3
+                    // VStack(spacing: 0) {
+                    Image(systemName: filterString.isEmpty ? "line.horizontal.3.decrease.circle" : "line.horizontal.3.decrease.circle.fill")
+                    // Text("Filter").font(.footnote)
+                    // }
                 }
 
                 Menu {
@@ -136,10 +137,11 @@ struct Console: View {
                     Label {
                         Text("Tools")
                     } icon: {
-                        VStack(spacing: 0) {
-                            Image(systemName: "wrench.and.screwdriver")
-                            Text("Tools").font(.footnote)
-                        }
+                        // FIXME: stacked image disappears in SwiftUI 3
+                        // VStack(spacing: 0) {
+                        Image(systemName: "wrench.and.screwdriver")
+                        // Text("Tools").font(.footnote)
+                        // }
                     }
                 }
             }
