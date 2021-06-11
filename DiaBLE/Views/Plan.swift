@@ -33,7 +33,7 @@ struct Plan: View {
             }
             .navigationBarTitleDisplayMode(.inline)
             .navigationTitle("Plan")
-        }.navigationViewStyle(StackNavigationViewStyle())
+        }.navigationViewStyle(.stack)
     }
 }
 

@@ -98,7 +98,7 @@ struct OnlineView: View {
             }
             .navigationBarTitleDisplayMode(.inline)
             .navigationTitle("Online")
-        }.navigationViewStyle(StackNavigationViewStyle())
+        }.navigationViewStyle(.stack)
     }
 }
 

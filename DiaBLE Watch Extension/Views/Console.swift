@@ -30,7 +30,7 @@ struct Console: View {
                         }
                         .frame(maxWidth: 24)
                         .padding(0)
-                        .buttonStyle(PlainButtonStyle())
+                        .buttonStyle(.plain)
                         .foregroundColor(.blue)
                     }
                 }
@@ -58,7 +58,7 @@ struct Console: View {
                     }
                 }
             }
-            .buttonStyle(PlainButtonStyle())
+            .buttonStyle(.plain)
             .foregroundColor(.blue)
 
 

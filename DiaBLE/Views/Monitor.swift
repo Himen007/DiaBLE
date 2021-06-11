@@ -196,7 +196,7 @@ struct Monitor: View {
                     .frame(width: 180)
                     .offset(x: showingHamburgerMenu ? 0 : -180)
             }
-        }.navigationViewStyle(StackNavigationViewStyle())
+        }.navigationViewStyle(.stack)
     }
 }
 

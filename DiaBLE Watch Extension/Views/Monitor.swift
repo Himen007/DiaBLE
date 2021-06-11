@@ -170,7 +170,7 @@ struct Monitor: View {
         // .navigationTitle("Monitor")
         .navigationBarHidden(true)
         .edgesIgnoringSafeArea([.bottom])
-        .buttonStyle(PlainButtonStyle())
+        .buttonStyle(.plain)
         .multilineTextAlignment(.center)
     }
 }

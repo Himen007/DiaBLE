@@ -80,7 +80,7 @@ struct OnlineView: View {
         }
         .navigationTitle("Online")
         .edgesIgnoringSafeArea([.bottom])
-        .buttonStyle(PlainButtonStyle())
+        .buttonStyle(.plain)
         .foregroundColor(Color(.cyan))
 
     }

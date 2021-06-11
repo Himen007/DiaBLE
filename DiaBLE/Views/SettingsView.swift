@@ -27,7 +27,7 @@ struct SettingsView: View {
                                 ForEach(TransmitterType.allCases) { t in
                                     Text(t.name).tag(t)
                                 }
-                            }.pickerStyle(SegmentedPickerStyle())
+                            }.pickerStyle(.segmented)
                         }
                         HStack(spacing: 0) {
                             Button {
@@ -82,7 +82,7 @@ struct SettingsView: View {
                                 Text(unit.description).tag(unit == .mmoll)
                             }
                         }
-                        .pickerStyle(SegmentedPickerStyle())
+                        .pickerStyle(.segmented)
                         .frame(width: 160)
                         Spacer()
                     }.padding(.bottom)
@@ -173,7 +173,7 @@ struct SettingsView: View {
             .font(Font.body.monospacedDigit())
             .navigationBarTitleDisplayMode(.inline)
             .navigationTitle("DiaBLE  \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as! String)  -  Settings")
-        }.navigationViewStyle(StackNavigationViewStyle())
+        }.navigationViewStyle(.stack)
     }
 }
 

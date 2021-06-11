@@ -51,7 +51,7 @@ struct HamburgerMenu: View {
                     }
                     .navigationBarTitleDisplayMode(.inline)
                     .navigationTitle("Help")
-                    .navigationViewStyle(StackNavigationViewStyle())
+                    .navigationViewStyle(.stack)
                     .toolbar {
                         Button {
                             withAnimation { showingHelp = false }
@@ -113,7 +113,7 @@ struct HamburgerMenu: View {
                     }
                     .navigationBarTitleDisplayMode(.inline)
                     .navigationTitle("About")
-                    .navigationViewStyle(StackNavigationViewStyle())
+                    .navigationViewStyle(.stack)
                     .toolbar {
                         Button {
                             withAnimation { showingAbout = false }

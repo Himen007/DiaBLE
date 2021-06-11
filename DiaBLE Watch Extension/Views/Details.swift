@@ -318,7 +318,7 @@ struct Details: View {
         .edgesIgnoringSafeArea(.bottom)
         .navigationTitle("Details")
         .foregroundColor(Color(.lightGray))
-        .buttonStyle(PlainButtonStyle())
+        .buttonStyle(.plain)
     }
 }
 

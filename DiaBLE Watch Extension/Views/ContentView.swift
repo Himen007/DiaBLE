@@ -59,7 +59,7 @@ struct ContentView: View {
                     }
                 }
                 .foregroundColor(.red)
-                .buttonStyle(PlainButtonStyle())
+                .buttonStyle(.plain)
             }
             .navigationTitle("DiaBLE  \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as! String)")
         }

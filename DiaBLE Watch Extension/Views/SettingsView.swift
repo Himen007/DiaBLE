@@ -124,7 +124,7 @@ struct SettingsView: View {
         .edgesIgnoringSafeArea(.bottom)
         .navigationTitle("Settings")
         .font(Font.body.monospacedDigit())
-        .buttonStyle(PlainButtonStyle())
+        .buttonStyle(.plain)
     }
 }
 

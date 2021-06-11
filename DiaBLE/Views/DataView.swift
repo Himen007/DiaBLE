@@ -145,7 +145,7 @@ struct DataView: View {
             .navigationBarTitleDisplayMode(.inline)
             .navigationTitle("Data")
 
-        }.navigationViewStyle(StackNavigationViewStyle())
+        }.navigationViewStyle(.stack)
     }
 }
 

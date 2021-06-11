@@ -10,7 +10,7 @@ struct ConsoleTab: View {
                 Console()
             }
         }
-        .navigationViewStyle(StackNavigationViewStyle())
+        .navigationViewStyle(.stack)
     }
 }
 
