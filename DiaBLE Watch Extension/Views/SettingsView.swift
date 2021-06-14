@@ -14,24 +14,22 @@ struct SettingsView: View {
 
         VStack {
 
-            VStack(spacing: 0) {
-                VStack(spacing: 0) {
-                    HStack(spacing: 0) {
-                        Picker(selection: $settings.preferredTransmitter, label: Text("Preferred")) {
-                            ForEach(TransmitterType.allCases) { t in
-                                Text(t.name).tag(t)
-                            }
-                        }
-                        .labelsHidden()
-
-                        TextField("device name pattern", text: $settings.preferredDevicePattern)
-                            // .padding(.horizontal, 12)
-                            .frame(alignment: .center)
+            HStack {
+                Picker(selection: $settings.preferredTransmitter, label: Text("Preferred")) {
+                    ForEach(TransmitterType.allCases) { t in
+                        Text(t.name).tag(t)
                     }
-                }.padding(.top, 8).font(.footnote).foregroundColor(.blue)
-            }
+                }
+                .labelsHidden()
 
-            // TODO
+                TextField("device name pattern", text: $settings.preferredDevicePattern)
+                    .frame(alignment: .center)
+            }
+            .frame(height: 20)
+            .padding(.top, 57)
+            .font(.footnote)
+            .foregroundColor(.blue)
+
             HStack {
                 Spacer()
                 Picker(selection: $settings.displayingMillimoles, label: Text("Unit")) {
@@ -41,7 +39,7 @@ struct SettingsView: View {
                 }
                 .font(.footnote)
                 .labelsHidden()
-                .frame(width: 80)
+                .frame(width: 80, height: 20)
                 Spacer()
             }
 
@@ -118,10 +116,10 @@ struct SettingsView: View {
                 }
 
                 Spacer()
-            }.padding(.top, 10)
+            }.padding(.top, 6)
 
         }
-        .edgesIgnoringSafeArea(.bottom)
+        .edgesIgnoringSafeArea([.top, .bottom])
         .navigationTitle("Settings")
         .font(Font.body.monospacedDigit())
         .buttonStyle(.plain)
