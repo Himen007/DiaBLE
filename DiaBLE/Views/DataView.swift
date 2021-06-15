@@ -139,6 +139,7 @@ struct DataView: View {
                             .onAppear { if let nightscout = app.main?.nightscout { nightscout.read() } }
                         }
                     }
+                    .listStyle(.plain)
                 }
             }
             .font(.system(.caption, design: .monospaced)).foregroundColor(Color(.lightGray))
