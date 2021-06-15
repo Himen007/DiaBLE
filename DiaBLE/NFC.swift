@@ -31,7 +31,7 @@ extension Sensor {
     var activationCommand: NFCCommand {
         switch self.type {
         case .libre1, .libreProH:
-                      return NFCCommand(code: 0xA0, parameters: backdoor)
+            return NFCCommand(code: 0xA0, parameters: backdoor)
         case .libre2: return nfcCommand(.activate)
         default:      return NFCCommand(code: 0x00)
         }
@@ -264,152 +264,144 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
             main.app.sensor = sensor
         }
 
-        connectedTag?.customCommand(requestFlags: .highDataRate, customCommandCode: 0xA1, customRequestParameters: Data()) { [self] result in
+        async { do {
+            let data = try await connectedTag?.customCommand(requestFlags: .highDataRate, customCommandCode: 0xA1, customRequestParameters: Data())
+            sensor.patchInfo = Data(data!)
+        } catch {
+            log("NFC: error while getting patch info: \(error.localizedDescription)")
+        }}
 
-            var patchInfo = Data()
+        // https://www.st.com/en/embedded-software/stsw-st25ios001.html#get-software
 
-            switch result {
+        let uid = connectedTag!.identifier.hex
+        log("NFC: IC identifier: \(uid)")
 
-            case .failure(let error):
-                log("NFC: error while getting patch info: \(error.localizedDescription)")
+        var manufacturer = String(tag.icManufacturerCode)
+        if manufacturer == "7" {
+            manufacturer.append(" (Texas Instruments)")
+        }
+        log("NFC: IC manufacturer code: \(manufacturer)")
+        log("NFC: IC serial number: \(tag.icSerialNumber.hex)")
 
-            case .success(let data):
-                patchInfo = data
-            }
+        var rom = "RF430"
+        switch connectedTag?.identifier[2] {
+        case 0xA0: rom += "TAL152H Libre 1 A0"
+        case 0xA4: rom += "TAL160H Libre 2 A4"
+        default:   rom += " unknown"
+        }
+        log("NFC: \(rom) ROM")
 
-            // https://www.st.com/en/embedded-software/stsw-st25ios001.html#get-software
+        log(String(format: "NFC: IC reference: 0x%X", systemInfo.icReference))
+        if systemInfo.applicationFamilyIdentifier != -1 {
+            log(String(format: "NFC: application family id (AFI): %d", systemInfo.applicationFamilyIdentifier))
+        }
+        if systemInfo.dataStorageFormatIdentifier != -1 {
+            log(String(format: "NFC: data storage format id: %d", systemInfo.dataStorageFormatIdentifier))
+        }
 
-            let uid = connectedTag!.identifier.hex
-            log("NFC: IC identifier: \(uid)")
+        log(String(format: "NFC: memory size: %d blocks", systemInfo.totalBlocks))
+        log(String(format: "NFC: block size: %d", systemInfo.blockSize))
 
-            var manufacturer = String(tag.icManufacturerCode)
-            if manufacturer == "7" {
-                manufacturer.append(" (Texas Instruments)")
-            }
-            log("NFC: IC manufacturer code: \(manufacturer)")
-            log("NFC: IC serial number: \(tag.icSerialNumber.hex)")
+        sensor.uid = Data(tag.identifier.reversed())
+        log("NFC: sensor uid: \(sensor.uid.hex)")
 
-            var rom = "RF430"
-            switch connectedTag?.identifier[2] {
-            case 0xA0: rom += "TAL152H Libre 1 A0"
-            case 0xA4: rom += "TAL160H Libre 2 A4"
-            default:   rom += " unknown"
-            }
-            log("NFC: \(rom) ROM")
+        if sensor.patchInfo.count > 0 {
+            log("NFC: patch info: \(sensor.patchInfo.hex)")
+            log("NFC: sensor type: \(sensor.type.rawValue)")
 
-            log(String(format: "NFC: IC reference: 0x%X", systemInfo.icReference))
-            if systemInfo.applicationFamilyIdentifier != -1 {
-                log(String(format: "NFC: application family id (AFI): %d", systemInfo.applicationFamilyIdentifier))
-            }
-            if systemInfo.dataStorageFormatIdentifier != -1 {
-                log(String(format: "NFC: data storage format id: %d", systemInfo.dataStorageFormatIdentifier))
-            }
+            main.settings.patchUid = sensor.uid
+            main.settings.patchInfo = sensor.patchInfo
+        }
 
-            log(String(format: "NFC: memory size: %d blocks", systemInfo.totalBlocks))
-            log(String(format: "NFC: block size: %d", systemInfo.blockSize))
+        log("NFC: sensor serial number: \(sensor.serial)")
 
-            sensor.uid = Data(tag.identifier.reversed())
-            log("NFC: sensor uid: \(sensor.uid.hex)")
+        if taskRequest != .none {
 
-            sensor.patchInfo = Data(patchInfo)
-            if patchInfo.count > 0 {
-                log("NFC: patch info: \(patchInfo.hex)")
-                log("NFC: sensor type: \(sensor.type.rawValue)")
+            /// Libre 1 memory layout:
+            /// config: 0x1A00, 64    (sensor UID and calibration info)
+            /// sram:   0x1C00, 512
+            /// rom:    0x4400 - 0x5FFF
+            /// fram lock table: 0xF840, 32
+            /// fram:   0xF860, 1952
 
-                main.settings.patchUid = sensor.uid
-                main.settings.patchInfo = sensor.patchInfo
-            }
+            if taskRequest == .dump {
 
-            log("NFC: sensor serial number: \(sensor.serial)")
+                readRaw(0x1A00, 64) { [self] address, data, error in
+                    if error == nil {
+                        log(data.hexDump(header: "Config RAM (patch UID at 0x1A08):", address: address))
+                    }
 
-            if taskRequest != .none {
-
-                /// Libre 1 memory layout:
-                /// config: 0x1A00, 64    (sensor UID and calibration info)
-                /// sram:   0x1C00, 512
-                /// rom:    0x4400 - 0x5FFF
-                /// fram lock table: 0xF840, 32
-                /// fram:   0xF860, 1952
-
-                if taskRequest == .dump {
-
-                    readRaw(0x1A00, 64) { address, data, error in
+                    readRaw(0x1C00, 512) { address, data, error in
                         if error == nil {
-                            log(data.hexDump(header: "Config RAM (patch UID at 0x1A08):", address: address))
+                            log(data.hexDump(header: "SRAM:", address: address))
                         }
 
-                        readRaw(0x1C00, 512) { address, data, error in
+                        readRaw(0xFFAC, 36) { address, data, error in
                             if error == nil {
-                                log(data.hexDump(header: "SRAM:", address: address))
+                                log(data.hexDump(header: "Patch table for A0-A4 E0-E2 commands:", address: address))
                             }
 
-                            readRaw(0xFFAC, 36) { address, data, error in
+                            readRaw(0xF860, 43 * 8) { address, data, error in
                                 if error == nil {
-                                    log(data.hexDump(header: "Patch table for A0-A4 E0-E2 commands:", address: address))
+                                    log(data.hexDump(header: "FRAM:", address: address))
                                 }
 
-                                readRaw(0xF860, 43 * 8) { address, data, error in
+                                read(from: 0, count: 43) { start, data, error in
                                     if error == nil {
-                                        log(data.hexDump(header: "FRAM:", address: address))
+                                        log(data.hexDump(header: "ISO 15693 FRAM blocks:", startingBlock: start))
+                                        if data.count > 0 {
+                                            sensor.fram = Data(data)
+                                        }
+                                        if sensor.encryptedFram.count > 0 && sensor.fram.count >= 344 {
+                                            log("\(sensor.fram.hexDump(header: "Decrypted FRAM:", startingBlock: 0))")
+                                        }
                                     }
 
-                                    read(from: 0, count: 43) { start, data, error in
-                                        if error == nil {
-                                            log(data.hexDump(header: "ISO 15693 FRAM blocks:", startingBlock: start))
-                                            if data.count > 0 {
-                                                sensor.fram = Data(data)
-                                            }
-                                            if sensor.encryptedFram.count > 0 && sensor.fram.count >= 344 {
-                                                log("\(sensor.fram.hexDump(header: "Decrypted FRAM:", startingBlock: 0))")
-                                            }
+
+                                    // main.app.lastReadingDate = Date()
+                                    // sensor.lastReadingDate = main.app.lastReadingDate
+                                    // main.parseSensorData(sensor)
+
+
+                                    /// count is limited to 89 with an encrypted sensor (header as first 3 blocks);
+                                    /// after sending the A1 1A subcommand the FRAM is decrypted in-place
+                                    /// and mirrored in the last 43 blocks of 89 but the max count becomes 1252
+                                    var count = sensor.encryptedFram.count > 0 ? 89 : 1252
+                                    if sensor.securityGeneration > 1 { count = 43 }
+                                    readBlocks(from: 0, count: count) { start, data, error in
+
+                                        AudioServicesPlaySystemSound(kSystemSoundID_Vibrate)
+
+                                        let blocks = data.count / 8
+                                        let command = sensor.securityGeneration > 1 ? "`A1 21`" : "B0/B3"
+
+                                        log(data.hexDump(header: "\(command) command output (\(blocks) blocks):", startingBlock: start))
+                                        if error != nil {
+                                            log("NFC: \(error!.localizedDescription) (ISO 15693 error 0x\(error!.iso15693Code.hex): \(error!.iso15693Description))")
                                         }
 
 
-                                        // main.app.lastReadingDate = Date()
-                                        // sensor.lastReadingDate = main.app.lastReadingDate
-                                        // main.parseSensorData(sensor)
+                                        // writeRaw(0xFFB8, Data([0xE0, 0x00])) { // to restore: Data([0xAB, 0xAB]))
+                                        // TODO: overwrite commands CRC
+                                        // log("NFC: did write at address: 0x\($0.hex), bytes: 0x\($1.hex), error: \($2?.localizedDescription ?? "none")")
+                                        // } // TEST writeRaw
 
 
-                                        /// count is limited to 89 with an encrypted sensor (header as first 3 blocks);
-                                        /// after sending the A1 1A subcommand the FRAM is decrypted in-place
-                                        /// and mirrored in the last 43 blocks of 89 but the max count becomes 1252
-                                        var count = sensor.encryptedFram.count > 0 ? 89 : 1252
-                                        if sensor.securityGeneration > 1 { count = 43 }
-                                        readBlocks(from: 0, count: count) { start, data, error in
-
-                                            AudioServicesPlaySystemSound(kSystemSoundID_Vibrate)
-
-                                            let blocks = data.count / 8
-                                            let command = sensor.securityGeneration > 1 ? "`A1 21`" : "B0/B3"
-
-                                            log(data.hexDump(header: "\(command) command output (\(blocks) blocks):", startingBlock: start))
-                                            if error != nil {
-                                                log("NFC: \(error!.localizedDescription) (ISO 15693 error 0x\(error!.iso15693Code.hex): \(error!.iso15693Description))")
-                                            }
+                                        taskRequest = .none
+                                        session.invalidate()
 
 
-                                            // writeRaw(0xFFB8, Data([0xE0, 0x00])) { // to restore: Data([0xAB, 0xAB]))
-                                            // TODO: overwrite commands CRC
-                                            // log("NFC: did write at address: 0x\($0.hex), bytes: 0x\($1.hex), error: \($2?.localizedDescription ?? "none")")
-                                            // } // TEST writeRaw
-
-
-                                            taskRequest = .none
-                                            session.invalidate()
-
-
-                                            if error == nil && main.settings.debugLevel > 0 {
-                                                let bytes = min(89 * 8 + 34 + 10, data.count)
-                                                var offset = 0
-                                                var i = offset + 2
-                                                while offset < bytes - 3 && i < bytes - 1 {
-                                                    if UInt16(data[offset ... offset + 1]) == data[offset + 2 ... i + 1].crc16 {
-                                                        log("CRC matches for \(i - offset + 2) bytes at #\((offset / 8).hex) [\(offset + 2)...\(i + 1)] \(data[offset ... offset + 1].hex) = \(data[offset + 2 ... i + 1].crc16.hex)\n\(data[offset ... i + 1].hexDump(header: "\(libre2DumpMap[offset]?.1 ?? "[???]"):", address: 0))")
-                                                        offset = i + 2
-                                                        i = offset
-                                                    }
-                                                    i += 2
+                                        if error == nil && main.settings.debugLevel > 0 {
+                                            let bytes = min(89 * 8 + 34 + 10, data.count)
+                                            var offset = 0
+                                            var i = offset + 2
+                                            while offset < bytes - 3 && i < bytes - 1 {
+                                                if UInt16(data[offset ... offset + 1]) == data[offset + 2 ... i + 1].crc16 {
+                                                    log("CRC matches for \(i - offset + 2) bytes at #\((offset / 8).hex) [\(offset + 2)...\(i + 1)] \(data[offset ... offset + 1].hex) = \(data[offset + 2 ... i + 1].crc16.hex)\n\(data[offset ... i + 1].hexDump(header: "\(libre2DumpMap[offset]?.1 ?? "[???]"):", address: 0))")
+                                                    offset = i + 2
+                                                    i = offset
                                                 }
+                                                i += 2
                                             }
                                         }
                                     }
@@ -417,157 +409,158 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
                             }
                         }
                     }
-                    return
                 }
+                return
+            }
 
-                // TODO: nested handlers
-                if sensor.securityGeneration > 1 {
-                    var commands: [NFCCommand] = [sensor.nfcCommand(.readAttribute),
-                                                  sensor.nfcCommand(.readChallenge)
-                    ]
-                    if main.settings.debugLevel > 0 {
-                        for block in stride(from: 0, through: 42, by: 3) {
-                            var readCommand = sensor.nfcCommand(.readBlocks)
-                            readCommand.parameters += Data([UInt8(block), block != 42 ? 2 : 0])
-                            commands.append(readCommand)
-                        }
-                        // Find the only supported commands: A1, B1, B2, B4
-                        //     for c in 0xA0 ... 0xBF {
-                        //         commands.append(NFCCommand(code: c, description:"\(c.hex)"))
-                        //     }
+            // TODO: nested handlers
+            if sensor.securityGeneration > 1 {
+                var commands: [NFCCommand] = [sensor.nfcCommand(.readAttribute),
+                                              sensor.nfcCommand(.readChallenge)
+                ]
+                if main.settings.debugLevel > 0 {
+                    for block in stride(from: 0, through: 42, by: 3) {
+                        var readCommand = sensor.nfcCommand(.readBlocks)
+                        readCommand.parameters += Data([UInt8(block), block != 42 ? 2 : 0])
+                        commands.append(readCommand)
                     }
-                    for cmd in commands {
-                        log("NFC: sending \(sensor.type) command to \(cmd.description): code: 0x\(cmd.code.hex), parameters: 0x\(cmd.parameters.hex)")
-                        connectedTag?.customCommand(requestFlags: .highDataRate, customCommandCode: cmd.code, customRequestParameters: cmd.parameters) { result in
-
-                            switch result {
-
-                            case .failure(let error):
-                                log("NFC: '\(cmd.description)' command error: \(error.localizedDescription) (ISO 15693 error 0x\(error.iso15693Code.hex): \(error.iso15693Description))")
-
-                            case.success(let output):
-                                log("NFC: '\(cmd.description)' command output (\(output.count) bytes): 0x\(output.hex)")
-                                if output.count == 6 { // .readAttribute
-                                    let state = SensorState(rawValue: output[0]) ?? .unknown
-                                    sensor.state = state
-                                    log("\(sensor.type) state: \(state.description.lowercased()) (0x\(state.rawValue.hex))")
-                                }
-
-                            }
-                        }
-                    }
-
-                    readBlocks(from: 0, count: 43) { start, data, error in
-
-                        AudioServicesPlaySystemSound(kSystemSoundID_Vibrate)
-
-                        let blocks = data.count / 8
-
-                        log(data.hexDump(header: "FRAM read using `A1 21` (\(blocks) blocks):", startingBlock: start))
-                        if error != nil {
-                            log("NFC: \(error!.localizedDescription) (ISO 15693 error 0x\(error!.iso15693Code.hex): \(error!.iso15693Description))")
-                        }
-                        session.invalidate()    // ISO 15693 read command fails anyway
-                    }
+                    // Find the only supported commands: A1, B1, B2, B4
+                    //     for c in 0xA0 ... 0xBF {
+                    //         commands.append(NFCCommand(code: c, description:"\(c.hex)"))
+                    //     }
                 }
-
-            libre2:
-                if sensor.type == .libre2 {
-                    let subCmd: Sensor.Subcommand = (taskRequest == .enableStreaming) ?
-                        .enableStreaming : (taskRequest == .activate) ?
-                        .activate : (taskRequest == .unlock) ?
-                        .unlock :.unknown0x1c
-
-                    // TODO
-                    if subCmd == .unknown0x1c { break libre2 }    // :)
-
-                    let currentUnlockCode = sensor.unlockCode
-                    sensor.unlockCode = UInt32(main.settings.activeSensorUnlockCode)
-
-                    let cmd = sensor.nfcCommand(subCmd)
+                for cmd in commands {
                     log("NFC: sending \(sensor.type) command to \(cmd.description): code: 0x\(cmd.code.hex), parameters: 0x\(cmd.parameters.hex)")
-                    connectedTag?.customCommand(requestFlags: .highDataRate, customCommandCode: cmd.code, customRequestParameters: cmd.parameters) { result in
-
-                        AudioServicesPlaySystemSound(kSystemSoundID_Vibrate)
+                    connectedTag?.customCommand(requestFlags: .highDataRate, customCommandCode: cmd.code, customRequestParameters: cmd.parameters) { [self] result in
 
                         switch result {
 
                         case .failure(let error):
                             log("NFC: '\(cmd.description)' command error: \(error.localizedDescription) (ISO 15693 error 0x\(error.iso15693Code.hex): \(error.iso15693Description))")
-                            sensor.unlockCode = currentUnlockCode
 
                         case.success(let output):
                             log("NFC: '\(cmd.description)' command output (\(output.count) bytes): 0x\(output.hex)")
-
-                            if subCmd == .enableStreaming && output.count == 6 {
-                                log("NFC: enabled BLE streaming on \(sensor.type) \(sensor.serial) (unlock code: \(sensor.unlockCode), MAC address: \(Data(output.reversed()).hexAddress))")
-                                main.settings.activeSensorSerial = sensor.serial
-                                main.settings.activeSensorAddress = Data(output.reversed())
-                                sensor.activePatchInfo = sensor.patchInfo
-                                main.settings.activeSensorPatchInfo = sensor.patchInfo
-                                sensor.unlockCount = 0
-                                main.settings.activeSensorUnlockCount = 0
-
-                                // TODO: cancel connections also before enabling streaming?
-                                main.rescan()
-
+                            if output.count == 6 { // .readAttribute
+                                let state = SensorState(rawValue: output[0]) ?? .unknown
+                                sensor.state = state
+                                log("\(sensor.type) state: \(state.description.lowercased()) (0x\(state.rawValue.hex))")
                             }
 
-                            if subCmd == .activate && output.count == 4 {
-                                log("NFC: after trying activating received \(output.hex) for the patch info \(patchInfo.hex)")
-                                // receiving 9d081000 for a patchInfo 9d0830010000
-                            }
-
-                            if subCmd == .unlock && output.count == 0 {
-                                log("NFC: FRAM should have been decrypted in-place")
-                                // TODO: test
-                            }
                         }
-
-                        taskRequest = .none
-                        // session.invalidate()
                     }
                 }
 
-            }
+                readBlocks(from: 0, count: 43) { [self] start, data, error in
 
-            var blocks = 43
-            if taskRequest == .readFRAM {
-                if sensor.type == .libre1 {
-                    blocks = 244
+                    AudioServicesPlaySystemSound(kSystemSoundID_Vibrate)
+
+                    let blocks = data.count / 8
+
+                    log(data.hexDump(header: "FRAM read using `A1 21` (\(blocks) blocks):", startingBlock: start))
+                    if error != nil {
+                        log("NFC: \(error!.localizedDescription) (ISO 15693 error 0x\(error!.iso15693Code.hex): \(error!.iso15693Description))")
+                    }
+                    session.invalidate()    // ISO 15693 read command fails anyway
                 }
             }
 
-            read(from: 0, count: blocks) { start, data, error in
+        libre2:
+            if sensor.type == .libre2 {
+                let subCmd: Sensor.Subcommand = (taskRequest == .enableStreaming) ?
+                    .enableStreaming : (taskRequest == .activate) ?
+                    .activate : (taskRequest == .unlock) ?
+                    .unlock :.unknown0x1c
 
-                AudioServicesPlaySystemSound(kSystemSoundID_Vibrate)
+                // TODO
+                if subCmd == .unknown0x1c { break libre2 }    // :)
 
-                if error == nil {
-                    session.invalidate()
-                }
+                let currentUnlockCode = sensor.unlockCode
+                sensor.unlockCode = UInt32(main.settings.activeSensorUnlockCode)
 
-                if data.count > 0 { log(data.hexDump(header: "NFC: did read \(data.count / 8) FRAM blocks:", startingBlock: 0)) }
+                let cmd = sensor.nfcCommand(subCmd)
+                log("NFC: sending \(sensor.type) command to \(cmd.description): code: 0x\(cmd.code.hex), parameters: 0x\(cmd.parameters.hex)")
+                connectedTag?.customCommand(requestFlags: .highDataRate, customCommandCode: cmd.code, customRequestParameters: cmd.parameters) { [self] result in
 
-                main.app.lastReadingDate = Date()
-                sensor.lastReadingDate = main.app.lastReadingDate
+                    AudioServicesPlaySystemSound(kSystemSoundID_Vibrate)
 
-                if data.count > 0 {
-                    sensor.fram = Data(data)
-                }
+                    switch result {
 
-                if taskRequest == .readFRAM {
-                    sensor.detailFRAM()
+                    case .failure(let error):
+                        log("NFC: '\(cmd.description)' command error: \(error.localizedDescription) (ISO 15693 error 0x\(error.iso15693Code.hex): \(error.iso15693Description))")
+                        sensor.unlockCode = currentUnlockCode
+
+                    case.success(let output):
+                        log("NFC: '\(cmd.description)' command output (\(output.count) bytes): 0x\(output.hex)")
+
+                        if subCmd == .enableStreaming && output.count == 6 {
+                            log("NFC: enabled BLE streaming on \(sensor.type) \(sensor.serial) (unlock code: \(sensor.unlockCode), MAC address: \(Data(output.reversed()).hexAddress))")
+                            main.settings.activeSensorSerial = sensor.serial
+                            main.settings.activeSensorAddress = Data(output.reversed())
+                            sensor.activePatchInfo = sensor.patchInfo
+                            main.settings.activeSensorPatchInfo = sensor.patchInfo
+                            sensor.unlockCount = 0
+                            main.settings.activeSensorUnlockCount = 0
+
+                            // TODO: cancel connections also before enabling streaming?
+                            main.rescan()
+
+                        }
+
+                        if subCmd == .activate && output.count == 4 {
+                            log("NFC: after trying activating received \(output.hex) for the patch info \(sensor.patchInfo.hex)")
+                            // receiving 9d081000 for a patchInfo 9d0830010000
+                        }
+
+                        if subCmd == .unlock && output.count == 0 {
+                            log("NFC: FRAM should have been decrypted in-place")
+                            // TODO: test
+                        }
+                    }
+
                     taskRequest = .none
-                    return
+                    // session.invalidate()
                 }
+            }
 
-                main.parseSensorData(sensor)
+        }
 
-                main.status("\(sensor.type)  +  NFC")
+        var blocks = 43
+        if taskRequest == .readFRAM {
+            if sensor.type == .libre1 {
+                blocks = 244
             }
         }
 
-#endif
+        read(from: 0, count: blocks) { [self] start, data, error in
+
+            AudioServicesPlaySystemSound(kSystemSoundID_Vibrate)
+
+            if error == nil {
+                session.invalidate()
+            }
+
+            if data.count > 0 { log(data.hexDump(header: "NFC: did read \(data.count / 8) FRAM blocks:", startingBlock: 0)) }
+
+            main.app.lastReadingDate = Date()
+            sensor.lastReadingDate = main.app.lastReadingDate
+
+            if data.count > 0 {
+                sensor.fram = Data(data)
+            }
+
+            if taskRequest == .readFRAM {
+                sensor.detailFRAM()
+                taskRequest = .none
+                return
+            }
+
+            main.parseSensorData(sensor)
+
+            main.status("\(sensor.type)  +  NFC")
+            // }
+        }
+
+#endif    // !targetEnvironment(macCatalyst)
     }
 
 #if !targetEnvironment(macCatalyst)    // the new Result handlers don't compile in Catalyst 14
