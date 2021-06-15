@@ -16,7 +16,7 @@ struct OnlineView: View {
         VStack {
             VStack(spacing: 0) {
                 HStack {
-                    Image("Nightscout").resizable().frame(width: 24, height: 24).shadow(color: Color(.cyan), radius: 4.0 )
+                    Image("Nightscout").resizable().frame(width: 24, height: 24).shadow(color: .cyan, radius: 4.0 )
                     Text("https://").foregroundColor(Color(.lightGray))
                     Spacer()
                     Text("token").foregroundColor(Color(.lightGray))
@@ -72,7 +72,7 @@ struct OnlineView: View {
                 .frame(maxWidth: .infinity, alignment: .topLeading)
             }
             // .font(.system(.footnote, design: .monospaced))
-            .foregroundColor(Color(.cyan))
+            .foregroundColor(.cyan)
             .onAppear { if let nightscout = app.main?.nightscout { nightscout.read()
                 app.main.log("nightscoutValues count \(history.nightscoutValues.count)")
 
@@ -81,7 +81,7 @@ struct OnlineView: View {
         .navigationTitle("Online")
         .edgesIgnoringSafeArea([.bottom])
         .buttonStyle(.plain)
-        .foregroundColor(Color(.cyan))
+        .foregroundColor(.cyan)
 
     }
 }

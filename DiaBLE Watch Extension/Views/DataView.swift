@@ -101,7 +101,7 @@ struct DataView: View {
                             .frame(maxWidth: .infinity, alignment: .topLeading)
                         }
                     }
-                    .foregroundColor(Color(.cyan))
+                    .foregroundColor(.cyan)
                     .onAppear { if let nightscout = app.main?.nightscout { nightscout.read() } }
                 }
             }.frame(idealHeight: 300)

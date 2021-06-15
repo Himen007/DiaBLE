@@ -21,7 +21,7 @@ struct OnlineView: View {
                 VStack(spacing: 0) {
 
                     HStack {
-                        Image("Nightscout").resizable().frame(width: 32, height: 32).shadow(color: Color(.cyan), radius: 4.0 )
+                        Image("Nightscout").resizable().frame(width: 32, height: 32).shadow(color: .cyan, radius: 4.0 )
                         VStack(spacing: 0) {
                             HStack(alignment: .firstTextBaseline, spacing: 0) {
                                 Text("https://").foregroundColor(Color(.lightGray))
@@ -92,7 +92,9 @@ struct OnlineView: View {
                                 .fixedSize(horizontal: false, vertical: true).listRowInsets(EdgeInsets())
                         }
                         .frame(maxWidth: .infinity, alignment: .topLeading)
-                    }.font(.system(.caption, design: .monospaced)).foregroundColor(Color(.cyan))
+                    }
+                    .listStyle(.plain)
+                    .font(.system(.caption, design: .monospaced)).foregroundColor(.cyan)
                     .onAppear { if let nightscout = app.main?.nightscout { nightscout.read() } }
                 }
             }
