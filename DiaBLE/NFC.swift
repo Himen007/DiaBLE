@@ -187,7 +187,9 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
 
     var tagSession: NFCTagReaderSession?
     var connectedTag: NFCISO15693Tag?
+#if !targetEnvironment(macCatalyst)
     var systemInfo: NFCISO15693SystemInfo!
+#endif
     var sensor: Sensor!
 
     var taskRequest: TaskRequest? {
@@ -231,6 +233,10 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
 
         session.alertMessage = "Scan Complete"
 
+
+#if !targetEnvironment(macCatalyst)    // the async methods and Result handlers don't compile in Catalyst
+
+
         async { do {
             try await session.connect(to: firstTag)
         } catch {
@@ -240,10 +246,6 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
         }}
 
         connectedTag = tag
-
-        // https://www.st.com/en/embedded-software/stsw-st25ios001.html#get-software
-
-#if !targetEnvironment(macCatalyst)    // the new Result handlers don't compile in Catalyst 14
 
         async { do {
             systemInfo = try await connectedTag?.systemInfo(requestFlags: .highDataRate)
@@ -274,6 +276,8 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
             case .success(let data):
                 patchInfo = data
             }
+
+            // https://www.st.com/en/embedded-software/stsw-st25ios001.html#get-software
 
             let uid = connectedTag!.identifier.hex
             log("NFC: IC identifier: \(uid)")
