@@ -36,7 +36,7 @@ extension Sensor {
     var activationCommand: NFCCommand {
         switch self.type {
         case .libre1, .libreProH:
-                      return NFCCommand(code: 0xA0, parameters: backdoor)
+            return NFCCommand(code: 0xA0, parameters: backdoor)
         case .libre2: return nfcCommand(.activate)
         default:      return NFCCommand(code: 0x00)
         }
@@ -352,97 +352,68 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
 
         }
 
-        if taskRequest != .none {
+        // TODO: include in the preceeding async block
 
-            /// Libre 1 memory layout:
-            /// config: 0x1A00, 64    (sensor UID and calibration info)
-            /// sram:   0x1C00, 512
-            /// rom:    0x4400 - 0x5FFF
-            /// fram lock table: 0xF840, 32
-            /// fram:   0xF860, 1952
+        if taskRequest != .none {
 
             if taskRequest == .dump {
 
-                readRaw(0x1A00, 64) { [self] address, data, error in
+                read(from: 0, count: 43) { [self] start, data, error in
                     if error == nil {
-                        log(data.hexDump(header: "Config RAM (patch UID at 0x1A08):", address: address))
+                        log(data.hexDump(header: "ISO 15693 FRAM blocks:", startingBlock: start))
+                        if data.count > 0 {
+                            sensor.fram = Data(data)
+                        }
+                        if sensor.encryptedFram.count > 0 && sensor.fram.count >= 344 {
+                            log("\(sensor.fram.hexDump(header: "Decrypted FRAM:", startingBlock: 0))")
+                        }
                     }
 
-                    readRaw(0x1C00, 512) { address, data, error in
-                        if error == nil {
-                            log(data.hexDump(header: "SRAM:", address: address))
+
+                    // main.app.lastReadingDate = Date()
+                    // sensor.lastReadingDate = main.app.lastReadingDate
+                    // main.parseSensorData(sensor)
+
+
+                    /// count is limited to 89 with an encrypted sensor (header as first 3 blocks);
+                    /// after sending the A1 1A subcommand the FRAM is decrypted in-place
+                    /// and mirrored in the last 43 blocks of 89 but the max count becomes 1252
+                    var count = sensor.encryptedFram.count > 0 ? 89 : 1252
+                    if sensor.securityGeneration > 1 { count = 43 }
+                    readBlocks(from: 0, count: count) { start, data, error in
+
+                        AudioServicesPlaySystemSound(kSystemSoundID_Vibrate)
+
+                        let blocks = data.count / 8
+                        let command = sensor.securityGeneration > 1 ? "`A1 21`" : "B0/B3"
+
+                        log(data.hexDump(header: "\(command) command output (\(blocks) blocks):", startingBlock: start))
+                        if error != nil {
+                            log("NFC: \(error!.localizedDescription) (ISO 15693 error 0x\(error!.iso15693Code.hex): \(error!.iso15693Description))")
                         }
 
-                        readRaw(0xFFAC, 36) { address, data, error in
-                            if error == nil {
-                                log(data.hexDump(header: "Patch table for A0-A4 E0-E2 commands:", address: address))
-                            }
 
-                            readRaw(0xF860, 43 * 8) { address, data, error in
-                                if error == nil {
-                                    log(data.hexDump(header: "FRAM:", address: address))
+                        // writeRaw(0xFFB8, Data([0xE0, 0x00])) { // to restore: Data([0xAB, 0xAB]))
+                        // TODO: overwrite commands CRC
+                        // log("NFC: did write at address: 0x\($0.hex), bytes: 0x\($1.hex), error: \($2?.localizedDescription ?? "none")")
+                        // } // TEST writeRaw
+
+
+                        taskRequest = .none
+                        session.invalidate()
+
+
+                        if error == nil && main.settings.debugLevel > 0 {
+                            let bytes = min(89 * 8 + 34 + 10, data.count)
+                            var offset = 0
+                            var i = offset + 2
+                            while offset < bytes - 3 && i < bytes - 1 {
+                                if UInt16(data[offset ... offset + 1]) == data[offset + 2 ... i + 1].crc16 {
+                                    log("CRC matches for \(i - offset + 2) bytes at #\((offset / 8).hex) [\(offset + 2)...\(i + 1)] \(data[offset ... offset + 1].hex) = \(data[offset + 2 ... i + 1].crc16.hex)\n\(data[offset ... i + 1].hexDump(header: "\(libre2DumpMap[offset]?.1 ?? "[???]"):", address: 0))")
+                                    offset = i + 2
+                                    i = offset
                                 }
-
-                                read(from: 0, count: 43) { start, data, error in
-                                    if error == nil {
-                                        log(data.hexDump(header: "ISO 15693 FRAM blocks:", startingBlock: start))
-                                        if data.count > 0 {
-                                            sensor.fram = Data(data)
-                                        }
-                                        if sensor.encryptedFram.count > 0 && sensor.fram.count >= 344 {
-                                            log("\(sensor.fram.hexDump(header: "Decrypted FRAM:", startingBlock: 0))")
-                                        }
-                                    }
-
-
-                                    // main.app.lastReadingDate = Date()
-                                    // sensor.lastReadingDate = main.app.lastReadingDate
-                                    // main.parseSensorData(sensor)
-
-
-                                    /// count is limited to 89 with an encrypted sensor (header as first 3 blocks);
-                                    /// after sending the A1 1A subcommand the FRAM is decrypted in-place
-                                    /// and mirrored in the last 43 blocks of 89 but the max count becomes 1252
-                                    var count = sensor.encryptedFram.count > 0 ? 89 : 1252
-                                    if sensor.securityGeneration > 1 { count = 43 }
-                                    readBlocks(from: 0, count: count) { start, data, error in
-
-                                        AudioServicesPlaySystemSound(kSystemSoundID_Vibrate)
-
-                                        let blocks = data.count / 8
-                                        let command = sensor.securityGeneration > 1 ? "`A1 21`" : "B0/B3"
-
-                                        log(data.hexDump(header: "\(command) command output (\(blocks) blocks):", startingBlock: start))
-                                        if error != nil {
-                                            log("NFC: \(error!.localizedDescription) (ISO 15693 error 0x\(error!.iso15693Code.hex): \(error!.iso15693Description))")
-                                        }
-
-
-                                        // writeRaw(0xFFB8, Data([0xE0, 0x00])) { // to restore: Data([0xAB, 0xAB]))
-                                        // TODO: overwrite commands CRC
-                                        // log("NFC: did write at address: 0x\($0.hex), bytes: 0x\($1.hex), error: \($2?.localizedDescription ?? "none")")
-                                        // } // TEST writeRaw
-
-
-                                        taskRequest = .none
-                                        session.invalidate()
-
-
-                                        if error == nil && main.settings.debugLevel > 0 {
-                                            let bytes = min(89 * 8 + 34 + 10, data.count)
-                                            var offset = 0
-                                            var i = offset + 2
-                                            while offset < bytes - 3 && i < bytes - 1 {
-                                                if UInt16(data[offset ... offset + 1]) == data[offset + 2 ... i + 1].crc16 {
-                                                    log("CRC matches for \(i - offset + 2) bytes at #\((offset / 8).hex) [\(offset + 2)...\(i + 1)] \(data[offset ... offset + 1].hex) = \(data[offset + 2 ... i + 1].crc16.hex)\n\(data[offset ... i + 1].hexDump(header: "\(libre2DumpMap[offset]?.1 ?? "[???]"):", address: 0))")
-                                                    offset = i + 2
-                                                    i = offset
-                                                }
-                                                i += 2
-                                            }
-                                        }
-                                    }
-                                }
+                                i += 2
                             }
                         }
                     }
