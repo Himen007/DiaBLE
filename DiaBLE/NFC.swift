@@ -238,30 +238,6 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
 
         session.alertMessage = "Scan Complete"
 
-
-#if !targetEnvironment(macCatalyst)    // the async methods and Result handlers don't compile in Catalyst
-
-
-        async { do {
-            try await session.connect(to: firstTag)
-        } catch {
-            log("NFC: \(error.localizedDescription)")
-            session.invalidate(errorMessage: "Connection failure: \(error.localizedDescription)")
-            return
-        }}
-
-        connectedTag = tag
-
-        async { do {
-            systemInfo = try await connectedTag?.systemInfo(requestFlags: .highDataRate)
-            // "pop" vibration
-            AudioServicesPlaySystemSound(1520)
-        } catch {
-            session.invalidate(errorMessage: "Error while getting system info: " + error.localizedDescription)
-            log("NFC: error while getting system info: \(error.localizedDescription)")
-            return
-        }}
-
         if  main.app.sensor != nil {
             sensor = main.app.sensor
         } else {
@@ -269,56 +245,82 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
             main.app.sensor = sensor
         }
 
-        async { do {
-            let data = try await connectedTag?.customCommand(requestFlags: .highDataRate, customCommandCode: 0xA1, customRequestParameters: Data())
-            sensor.patchInfo = Data(data!)
-        } catch {
-            log("NFC: error while getting patch info: \(error.localizedDescription)")
-        }}
+#if !targetEnvironment(macCatalyst)    // the async methods and Result handlers don't compile in Catalyst
 
-        // https://www.st.com/en/embedded-software/stsw-st25ios001.html#get-software
+        async {
 
-        let uid = connectedTag!.identifier.hex
-        log("NFC: IC identifier: \(uid)")
+            do {
+                try await session.connect(to: firstTag)
+                connectedTag = tag
+            } catch {
+                log("NFC: \(error.localizedDescription)")
+                session.invalidate(errorMessage: "Connection failure: \(error.localizedDescription)")
+                return
+            }
 
-        var manufacturer = String(tag.icManufacturerCode)
-        if manufacturer == "7" {
-            manufacturer.append(" (Texas Instruments)")
+            do {
+                systemInfo = try await connectedTag?.systemInfo(requestFlags: .highDataRate)
+                // "pop" vibration
+                AudioServicesPlaySystemSound(1520)
+            } catch {
+                session.invalidate(errorMessage: "Error while getting system info: " + error.localizedDescription)
+                log("NFC: error while getting system info: \(error.localizedDescription)")
+                return
+            }
+
+            do {
+                let output = try await connectedTag?.customCommand(requestFlags: .highDataRate, customCommandCode: 0xA1, customRequestParameters: Data())
+                sensor.patchInfo = Data(output!)
+            } catch {
+                log("NFC: error while getting patch info: \(error.localizedDescription)")
+            }
+
+            // https://www.st.com/en/embedded-software/stsw-st25ios001.html#get-software
+
+            let uid = connectedTag!.identifier.hex
+            log("NFC: IC identifier: \(uid)")
+
+            var manufacturer = String(tag.icManufacturerCode)
+            if manufacturer == "7" {
+                manufacturer.append(" (Texas Instruments)")
+            }
+            log("NFC: IC manufacturer code: \(manufacturer)")
+            log("NFC: IC serial number: \(tag.icSerialNumber.hex)")
+
+            var rom = "RF430"
+            switch connectedTag?.identifier[2] {
+            case 0xA0: rom += "TAL152H Libre 1 A0"
+            case 0xA4: rom += "TAL160H Libre 2 A4"
+            default:   rom += " unknown"
+            }
+            log("NFC: \(rom) ROM")
+
+            log(String(format: "NFC: IC reference: 0x%X", systemInfo.icReference))
+            if systemInfo.applicationFamilyIdentifier != -1 {
+                log(String(format: "NFC: application family id (AFI): %d", systemInfo.applicationFamilyIdentifier))
+            }
+            if systemInfo.dataStorageFormatIdentifier != -1 {
+                log(String(format: "NFC: data storage format id: %d", systemInfo.dataStorageFormatIdentifier))
+            }
+
+            log(String(format: "NFC: memory size: %d blocks", systemInfo.totalBlocks))
+            log(String(format: "NFC: block size: %d", systemInfo.blockSize))
+
+            sensor.uid = Data(tag.identifier.reversed())
+            log("NFC: sensor uid: \(sensor.uid.hex)")
+
+            if sensor.patchInfo.count > 0 {
+                log("NFC: patch info: \(sensor.patchInfo.hex)")
+                log("NFC: sensor type: \(sensor.type.rawValue)")
+
+                // TODO: Expression is 'async' because of main acor
+//                 main.settings.patchUid = sensor.uid
+//                 main.settings.patchInfo = sensor.patchInfo
+            }
+
+            log("NFC: sensor serial number: \(sensor.serial)")
+
         }
-        log("NFC: IC manufacturer code: \(manufacturer)")
-        log("NFC: IC serial number: \(tag.icSerialNumber.hex)")
-
-        var rom = "RF430"
-        switch connectedTag?.identifier[2] {
-        case 0xA0: rom += "TAL152H Libre 1 A0"
-        case 0xA4: rom += "TAL160H Libre 2 A4"
-        default:   rom += " unknown"
-        }
-        log("NFC: \(rom) ROM")
-
-        log(String(format: "NFC: IC reference: 0x%X", systemInfo.icReference))
-        if systemInfo.applicationFamilyIdentifier != -1 {
-            log(String(format: "NFC: application family id (AFI): %d", systemInfo.applicationFamilyIdentifier))
-        }
-        if systemInfo.dataStorageFormatIdentifier != -1 {
-            log(String(format: "NFC: data storage format id: %d", systemInfo.dataStorageFormatIdentifier))
-        }
-
-        log(String(format: "NFC: memory size: %d blocks", systemInfo.totalBlocks))
-        log(String(format: "NFC: block size: %d", systemInfo.blockSize))
-
-        sensor.uid = Data(tag.identifier.reversed())
-        log("NFC: sensor uid: \(sensor.uid.hex)")
-
-        if sensor.patchInfo.count > 0 {
-            log("NFC: patch info: \(sensor.patchInfo.hex)")
-            log("NFC: sensor type: \(sensor.type.rawValue)")
-
-            main.settings.patchUid = sensor.uid
-            main.settings.patchInfo = sensor.patchInfo
-        }
-
-        log("NFC: sensor serial number: \(sensor.serial)")
 
         if taskRequest != .none {
 
