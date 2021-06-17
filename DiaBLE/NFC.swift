@@ -17,6 +17,11 @@ struct NFCCommand {
     var description: String = ""
 }
 
+enum NFCError: Error {
+    case commandNotSupported
+    case customCommandError
+}
+
 
 extension Sensor {
 
@@ -31,7 +36,7 @@ extension Sensor {
     var activationCommand: NFCCommand {
         switch self.type {
         case .libre1, .libreProH:
-            return NFCCommand(code: 0xA0, parameters: backdoor)
+                      return NFCCommand(code: 0xA0, parameters: backdoor)
         case .libre2: return nfcCommand(.activate)
         default:      return NFCCommand(code: 0x00)
         }
@@ -776,6 +781,51 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
                 }
             }
         }
+    }
+
+
+    @discardableResult
+    func readRaw(_ address: Int, _ bytes: Int, buffer: Data = Data()) async throws -> (Int, Data) {
+
+        if sensor.type != .libre1 {
+            debugLog("readRaw() A3 command not supported by \(sensor.type)")
+            throw NFCError.commandNotSupported
+        }
+
+        var buffer = buffer
+        let addressToRead = address + buffer.count
+
+        var remainingBytes = bytes
+        let bytesToRead = remainingBytes > 24 ? 24 : bytes
+
+        var remainingWords = bytes / 2
+        if bytes % 2 == 1 || ( bytes % 2 == 0 && addressToRead % 2 == 1 ) { remainingWords += 1 }
+        let wordsToRead = remainingWords > 12 ? 12 : remainingWords    // real limit is 15
+
+        let readRawCommand = NFCCommand(code: 0xA3, parameters: sensor.backdoor + [UInt8(addressToRead & 0xFF), UInt8(addressToRead >> 8), UInt8(wordsToRead)])
+
+        if buffer.count == 0 { debugLog("NFC: sending \(readRawCommand.code.hex) 07 \(readRawCommand.parameters.hex) command (\(sensor.type) read raw)") }
+
+        do {
+            let output = try await connectedTag?.customCommand(requestFlags: .highDataRate, customCommandCode: readRawCommand.code, customRequestParameters: readRawCommand.parameters)
+            var data = Data(output!)
+
+            if addressToRead % 2 == 1 { data = data.subdata(in: 1 ..< data.count) }
+            if data.count - bytesToRead == 1 { data = data.subdata(in: 0 ..< data.count - 1) }
+
+            buffer += data
+            remainingBytes -= data.count
+
+            if remainingBytes != 0 {
+                try await readRaw(address, remainingBytes, buffer: buffer)
+            }
+        } catch {
+            debugLog("NFC: error while reading \(wordsToRead) words at raw memory 0x\(addressToRead.hex): \(error.localizedDescription) (ISO 15693 error 0x\(error.iso15693Code.hex): \(error.iso15693Description))")
+            throw NFCError.customCommandError
+        }
+
+        return (address, buffer)
+
     }
 
 
