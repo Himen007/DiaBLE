@@ -399,6 +399,8 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
 
                     } catch {
                         log("NFC: \(error.localizedDescription) (ISO 15693 error 0x\(error.iso15693Code.hex): \(error.iso15693Description))")
+
+                        // TODO: use defer once
                         taskRequest = .none
                         session.invalidate()
                         return
@@ -406,125 +408,119 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
 
                     return
                 }
-            }
 
-        }
+                if sensor.securityGeneration > 1 {
+                    var commands: [NFCCommand] = [sensor.nfcCommand(.readAttribute),
+                                                  sensor.nfcCommand(.readChallenge)
+                    ]
 
-
-        // TODO: include in the preceeding async block
-
-
-        if taskRequest != .none {
-
-            if sensor.securityGeneration > 1 {
-                var commands: [NFCCommand] = [sensor.nfcCommand(.readAttribute),
-                                              sensor.nfcCommand(.readChallenge)
-                ]
-                if main.settings.debugLevel > 0 {
-                    for block in stride(from: 0, through: 42, by: 3) {
-                        var readCommand = sensor.nfcCommand(.readBlocks)
-                        readCommand.parameters += Data([UInt8(block), block != 42 ? 2 : 0])
-                        commands.append(readCommand)
+                    // await main actor
+                    if await main.settings.debugLevel > 0 {
+                        for block in stride(from: 0, through: 42, by: 3) {
+                            var readCommand = sensor.nfcCommand(.readBlocks)
+                            readCommand.parameters += Data([UInt8(block), block != 42 ? 2 : 0])
+                            commands.append(readCommand)
+                        }
+                        // Find the only supported commands: A1, B1, B2, B4
+                        //     for c in 0xA0 ... 0xBF {
+                        //         commands.append(NFCCommand(code: c, description:"\(c.hex)"))
+                        //     }
                     }
-                    // Find the only supported commands: A1, B1, B2, B4
-                    //     for c in 0xA0 ... 0xBF {
-                    //         commands.append(NFCCommand(code: c, description:"\(c.hex)"))
-                    //     }
-                }
-                for cmd in commands {
-                    log("NFC: sending \(sensor.type) command to \(cmd.description): code: 0x\(cmd.code.hex), parameters: 0x\(cmd.parameters.hex)")
-                    connectedTag?.customCommand(requestFlags: .highDataRate, customCommandCode: cmd.code, customRequestParameters: cmd.parameters) { [self] result in
-
-                        switch result {
-
-                        case .failure(let error):
-                            log("NFC: '\(cmd.description)' command error: \(error.localizedDescription) (ISO 15693 error 0x\(error.iso15693Code.hex): \(error.iso15693Description))")
-
-                        case.success(let output):
-                            log("NFC: '\(cmd.description)' command output (\(output.count) bytes): 0x\(output.hex)")
-                            if output.count == 6 { // .readAttribute
-                                let state = SensorState(rawValue: output[0]) ?? .unknown
+                    for cmd in commands {
+                        log("NFC: sending \(sensor.type) command to \(cmd.description): code: 0x\(cmd.code.hex), parameters: 0x\(cmd.parameters.hex)")
+                        do {
+                            let output = try await connectedTag?.customCommand(requestFlags: .highDataRate, customCommandCode: cmd.code, customRequestParameters: cmd.parameters)
+                            let data = Data(output!)
+                            log("NFC: '\(cmd.description)' command output (\(data.count) bytes): 0x\(data.hex)")
+                            if data.count == 6 { // .readAttribute
+                                let state = SensorState(rawValue: data[0]) ?? .unknown
                                 sensor.state = state
                                 log("\(sensor.type) state: \(state.description.lowercased()) (0x\(state.rawValue.hex))")
                             }
-
+                        } catch {
+                            log("NFC: '\(cmd.description)' command error: \(error.localizedDescription) (ISO 15693 error 0x\(error.iso15693Code.hex): \(error.iso15693Description))")
                         }
                     }
-                }
 
-                readBlocks(from: 0, count: 43) { [self] start, data, error in
+                    do {
+                        defer {
+                            AudioServicesPlaySystemSound(kSystemSoundID_Vibrate)
+                            session.invalidate()    // ISO 15693 read command fails anyway
+                        }
 
-                    AudioServicesPlaySystemSound(kSystemSoundID_Vibrate)
-
-                    let blocks = data.count / 8
-
-                    log(data.hexDump(header: "FRAM read using `A1 21` (\(blocks) blocks):", startingBlock: start))
-                    if error != nil {
-                        log("NFC: \(error!.localizedDescription) (ISO 15693 error 0x\(error!.iso15693Code.hex): \(error!.iso15693Description))")
+                        let (start, data) = try await readBlocks(from: 0, count: 43)
+                        let blocks = data.count / 8
+                        log(data.hexDump(header: "FRAM read using `A1 21` (\(blocks) blocks):", startingBlock: start))
+                    } catch {
+                        log("NFC: \(error.localizedDescription) (ISO 15693 error 0x\(error.iso15693Code.hex): \(error.iso15693Description))")
                     }
-                    session.invalidate()    // ISO 15693 read command fails anyway
+
                 }
-            }
 
-        libre2:
-            if sensor.type == .libre2 {
-                let subCmd: Sensor.Subcommand = (taskRequest == .enableStreaming) ?
-                    .enableStreaming : (taskRequest == .activate) ?
-                    .activate : (taskRequest == .unlock) ?
-                    .unlock :.unknown0x1c
+            libre2:
+                if sensor.type == .libre2 {
+                    let subCmd: Sensor.Subcommand = (taskRequest == .enableStreaming) ?
+                        .enableStreaming : (taskRequest == .activate) ?
+                        .activate : (taskRequest == .unlock) ?
+                        .unlock :.unknown0x1c
 
-                // TODO
-                if subCmd == .unknown0x1c { break libre2 }    // :)
+                    // TODO
+                    if subCmd == .unknown0x1c { break libre2 }    // :)
 
-                let currentUnlockCode = sensor.unlockCode
-                sensor.unlockCode = UInt32(main.settings.activeSensorUnlockCode)
+                    let currentUnlockCode = sensor.unlockCode
+                    sensor.unlockCode = UInt32(await main.settings.activeSensorUnlockCode)
 
-                let cmd = sensor.nfcCommand(subCmd)
-                log("NFC: sending \(sensor.type) command to \(cmd.description): code: 0x\(cmd.code.hex), parameters: 0x\(cmd.parameters.hex)")
-                connectedTag?.customCommand(requestFlags: .highDataRate, customCommandCode: cmd.code, customRequestParameters: cmd.parameters) { [self] result in
+                    let cmd = sensor.nfcCommand(subCmd)
+                    log("NFC: sending \(sensor.type) command to \(cmd.description): code: 0x\(cmd.code.hex), parameters: 0x\(cmd.parameters.hex)")
 
-                    AudioServicesPlaySystemSound(kSystemSoundID_Vibrate)
+                    
+                    do {
+                        defer {
+                            AudioServicesPlaySystemSound(kSystemSoundID_Vibrate)
+                            taskRequest = .none
+                            // session.invalidate()
+                        }
 
-                    switch result {
+                        let output = try await connectedTag?.customCommand(requestFlags: .highDataRate, customCommandCode: cmd.code, customRequestParameters: cmd.parameters)
+                        let data = Data(output!)
 
-                    case .failure(let error):
-                        log("NFC: '\(cmd.description)' command error: \(error.localizedDescription) (ISO 15693 error 0x\(error.iso15693Code.hex): \(error.iso15693Description))")
-                        sensor.unlockCode = currentUnlockCode
+                        log("NFC: '\(cmd.description)' command output (\(data.count) bytes): 0x\(data.hex)")
 
-                    case.success(let output):
-                        log("NFC: '\(cmd.description)' command output (\(output.count) bytes): 0x\(output.hex)")
-
-                        if subCmd == .enableStreaming && output.count == 6 {
-                            log("NFC: enabled BLE streaming on \(sensor.type) \(sensor.serial) (unlock code: \(sensor.unlockCode), MAC address: \(Data(output.reversed()).hexAddress))")
-                            main.settings.activeSensorSerial = sensor.serial
-                            main.settings.activeSensorAddress = Data(output.reversed())
+                        if subCmd == .enableStreaming && data.count == 6 {
+                            log("NFC: enabled BLE streaming on \(sensor.type) \(sensor.serial) (unlock code: \(sensor.unlockCode), MAC address: \(Data(data.reversed()).hexAddress))")
+                            await main.settings.activeSensorSerial = sensor.serial
+                            await main.settings.activeSensorAddress = Data(data.reversed())
                             sensor.activePatchInfo = sensor.patchInfo
-                            main.settings.activeSensorPatchInfo = sensor.patchInfo
+                            await main.settings.activeSensorPatchInfo = sensor.patchInfo
                             sensor.unlockCount = 0
-                            main.settings.activeSensorUnlockCount = 0
+                            await main.settings.activeSensorUnlockCount = 0
 
                             // TODO: cancel connections also before enabling streaming?
-                            main.rescan()
+                            await main.rescan()
 
                         }
 
-                        if subCmd == .activate && output.count == 4 {
-                            log("NFC: after trying activating received \(output.hex) for the patch info \(sensor.patchInfo.hex)")
+                        if subCmd == .activate && data.count == 4 {
+                            log("NFC: after trying activating received \(data.hex) for the patch info \(sensor.patchInfo.hex)")
                             // receiving 9d081000 for a patchInfo 9d0830010000
                         }
 
-                        if subCmd == .unlock && output.count == 0 {
+                        if subCmd == .unlock && data.count == 0 {
                             log("NFC: FRAM should have been decrypted in-place")
                             // TODO: test
                         }
+
+                    } catch {
+                        log("NFC: '\(cmd.description)' command error: \(error.localizedDescription) (ISO 15693 error 0x\(error.iso15693Code.hex): \(error.iso15693Description))")
+                        sensor.unlockCode = currentUnlockCode
                     }
 
-                    taskRequest = .none
-                    // session.invalidate()
                 }
             }
 
         }
+
+        // TODO: include in the preceeding async block
 
         var blocks = 43
         if taskRequest == .readFRAM {
@@ -563,6 +559,7 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
         }
 
 #endif    // !targetEnvironment(macCatalyst)
+
     }
 
 #if !targetEnvironment(macCatalyst)    // the new Result handlers don't compile in Catalyst 14
