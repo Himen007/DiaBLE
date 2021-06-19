@@ -349,40 +349,28 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
                         let (address, data) = try await readRaw(0xF860, 43 * 8)
                         log(data.hexDump(header: "FRAM:", address: address))
                     }
-                }
-            }
 
-        }
-
-        // TODO: include in the preceeding async block
-
-        if taskRequest != .none {
-
-            if taskRequest == .dump {
-
-                read(from: 0, count: 43) { [self] start, data, error in
-                    if error == nil {
-                        log(data.hexDump(header: "ISO 15693 FRAM blocks:", startingBlock: start))
-                        if data.count > 0 {
-                            sensor.fram = Data(data)
-                        }
-                        if sensor.encryptedFram.count > 0 && sensor.fram.count >= 344 {
-                            log("\(sensor.fram.hexDump(header: "Decrypted FRAM:", startingBlock: 0))")
+                    // TODO await async
+                    read(from: 0, count: 43) { [self] start, data, error in
+                        if error == nil {
+                            log(data.hexDump(header: "ISO 15693 FRAM blocks:", startingBlock: start))
+                            if data.count > 0 {
+                                sensor.fram = Data(data)
+                            }
+                            if sensor.encryptedFram.count > 0 && sensor.fram.count >= 344 {
+                                log("\(sensor.fram.hexDump(header: "Decrypted FRAM:", startingBlock: 0))")
+                            }
                         }
                     }
-
-
-                    // main.app.lastReadingDate = Date()
-                    // sensor.lastReadingDate = main.app.lastReadingDate
-                    // main.parseSensorData(sensor)
-
 
                     /// count is limited to 89 with an encrypted sensor (header as first 3 blocks);
                     /// after sending the A1 1A subcommand the FRAM is decrypted in-place
                     /// and mirrored in the last 43 blocks of 89 but the max count becomes 1252
                     var count = sensor.encryptedFram.count > 0 ? 89 : 1252
                     if sensor.securityGeneration > 1 { count = 43 }
-                    readBlocks(from: 0, count: count) { start, data, error in
+
+                    do {
+                        let (start, data) = try await readBlocks(from: 0, count: count)
 
                         AudioServicesPlaySystemSound(kSystemSoundID_Vibrate)
 
@@ -390,22 +378,12 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
                         let command = sensor.securityGeneration > 1 ? "`A1 21`" : "B0/B3"
 
                         log(data.hexDump(header: "\(command) command output (\(blocks) blocks):", startingBlock: start))
-                        if error != nil {
-                            log("NFC: \(error!.localizedDescription) (ISO 15693 error 0x\(error!.iso15693Code.hex): \(error!.iso15693Description))")
-                        }
-
-
-                        // writeRaw(0xFFB8, Data([0xE0, 0x00])) { // to restore: Data([0xAB, 0xAB]))
-                        // TODO: overwrite commands CRC
-                        // log("NFC: did write at address: 0x\($0.hex), bytes: 0x\($1.hex), error: \($2?.localizedDescription ?? "none")")
-                        // } // TEST writeRaw
-
 
                         taskRequest = .none
                         session.invalidate()
 
-
-                        if error == nil && main.settings.debugLevel > 0 {
+                        // await main actor
+                        if await main.settings.debugLevel > 0 {
                             let bytes = min(89 * 8 + 34 + 10, data.count)
                             var offset = 0
                             var i = offset + 2
@@ -418,12 +396,26 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
                                 i += 2
                             }
                         }
+
+                    } catch {
+                        log("NFC: \(error.localizedDescription) (ISO 15693 error 0x\(error.iso15693Code.hex): \(error.iso15693Description))")
+                        taskRequest = .none
+                        session.invalidate()
+                        return
                     }
+
+                    return
                 }
-                return
             }
 
-            // TODO: nested handlers
+        }
+
+
+        // TODO: include in the preceeding async block
+
+
+        if taskRequest != .none {
+
             if sensor.securityGeneration > 1 {
                 var commands: [NFCCommand] = [sensor.nfcCommand(.readAttribute),
                                               sensor.nfcCommand(.readChallenge)
@@ -892,6 +884,10 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
 
 
     // Libre 1 only: overwrite mirrored FRAM blocks
+
+    /// To  enable E0 reset command: writeRaw(0xFFB8, Data([0xE0, 0x00]))
+    /// To  disable E0 again: writeRaw(0xFFB8, Data([0xAB, 0xAB]))
+    /// Both require recomputing and overwriting the commands CRC for fram[43 * 8 + 2 ..< (244 - 6) * 8])
 
     func writeRaw(_ address: Int, _ data: Data, handler: @escaping (Int, Data, Error?) -> Void) {
 
