@@ -38,7 +38,7 @@ extension Sensor {
     var activationCommand: NFCCommand {
         switch self.type {
         case .libre1, .libreProH:
-            return NFCCommand(code: 0xA0, parameters: backdoor)
+                      return NFCCommand(code: 0xA0, parameters: backdoor)
         case .libre2: return nfcCommand(.activate)
         default:      return NFCCommand(code: 0x00)
         }
@@ -139,8 +139,6 @@ extension Sensor {
 import CoreNFC
 
 
-// TODO
-
 enum IS015693Error: Int, CustomStringConvertible {
     case none                   = 0x00
     case commandNotSupported    = 0x01
@@ -180,7 +178,6 @@ extension Error {
 
 // https://github.com/ivalkou/LibreTools/blob/master/Sources/LibreTools/NFC/NFCManager.swift
 
-// TODO: refactor using Combine or, better, the upcoming await/async
 
 enum TaskRequest {
     case activate
@@ -350,17 +347,14 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
                         log(data.hexDump(header: "FRAM:", address: address))
                     }
 
-                    // TODO await async
-                    read(from: 0, count: 43) { [self] start, data, error in
-                        if error == nil {
-                            log(data.hexDump(header: "ISO 15693 FRAM blocks:", startingBlock: start))
-                            if data.count > 0 {
-                                sensor.fram = Data(data)
-                            }
-                            if sensor.encryptedFram.count > 0 && sensor.fram.count >= 344 {
-                                log("\(sensor.fram.hexDump(header: "Decrypted FRAM:", startingBlock: 0))")
-                            }
+                    do {
+                        let (start, data) = try await read(from: 0, count: 43)
+                        log(data.hexDump(header: "ISO 15693 FRAM blocks:", startingBlock: start))
+                        sensor.fram = Data(data)
+                        if sensor.encryptedFram.count > 0 && sensor.fram.count >= 344 {
+                            log("\(sensor.fram.hexDump(header: "Decrypted FRAM:", startingBlock: 0))")
                         }
+                    } catch {
                     }
 
                     /// count is limited to 89 with an encrypted sensor (header as first 3 blocks);
@@ -518,32 +512,22 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
                 }
             }
 
-        }
-
-        // TODO: include in the preceeding async block
-
-        var blocks = 43
-        if taskRequest == .readFRAM {
-            if sensor.type == .libre1 {
-                blocks = 244
+            var blocks = 43
+            if taskRequest == .readFRAM {
+                if sensor.type == .libre1 {
+                    blocks = 244
+                }
             }
-        }
 
-        read(from: 0, count: blocks) { [self] start, data, error in
-
-            AudioServicesPlaySystemSound(kSystemSoundID_Vibrate)
-
-            if error == nil {
+            do {
+                let (start, data) = try await read(from: 0, count: blocks)
+                await main.app.lastReadingDate = Date()
+                AudioServicesPlaySystemSound(kSystemSoundID_Vibrate)
                 session.invalidate()
-            }
-
-            if data.count > 0 { log(data.hexDump(header: "NFC: did read \(data.count / 8) FRAM blocks:", startingBlock: 0)) }
-
-            main.app.lastReadingDate = Date()
-            sensor.lastReadingDate = main.app.lastReadingDate
-
-            if data.count > 0 {
+                log(data.hexDump(header: "NFC: did read \(data.count / 8) FRAM blocks:", startingBlock: start))
                 sensor.fram = Data(data)
+            } catch {
+                AudioServicesPlaySystemSound(kSystemSoundID_Vibrate)
             }
 
             if taskRequest == .readFRAM {
@@ -552,10 +536,10 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
                 return
             }
 
-            main.parseSensorData(sensor)
+            await main.parseSensorData(sensor)
 
-            main.status("\(sensor.type)  +  NFC")
-            // }
+            await main.status("\(sensor.type)  +  NFC")
+
         }
 
 #endif    // !targetEnvironment(macCatalyst)
@@ -619,6 +603,19 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
                         requested = remaining
                     }
                     read(from: start, count: remaining, requesting: requested, buffer: buffer) { start, data, error in handler(start, data, error) }
+                }
+            }
+        }
+    }
+
+
+    func read(from start: Int, count blocks: Int, requesting: Int = 3, retries: Int = 5, buffer: Data = Data()) async throws -> (Int, Data) {
+        try await withUnsafeThrowingContinuation { continuation in
+            read(from: start, count: blocks, requesting: requesting, retries: retries, buffer: buffer) { start, data, error in
+                if let error = error {
+                    continuation.resume(throwing: error)
+                } else {
+                    continuation.resume(returning: (start, data))
                 }
             }
         }
