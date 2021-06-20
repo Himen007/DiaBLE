@@ -200,7 +200,9 @@ class Sensor: ObservableObject, Logging {
             // Int(fram[322]) << 8 + Int(fram[323]) correspond to patchInfo[2...3]
             region = Int(fram[323])
             maxLife = Int(fram[327]) << 8 + Int(fram[326])
-            main?.settings.activeSensorMaxLife = maxLife
+            DispatchQueue.main.async {
+                self.main?.settings.activeSensorMaxLife = self.maxLife
+            }
 
             guard fram.count >= 320 else { return }
 
@@ -264,7 +266,9 @@ class Sensor: ObservableObject, Logging {
             let i6 = readBits(fram, 0x150, 0x34, 0xc) << 2
 
             calibrationInfo = CalibrationInfo(i1: i1, i2: i2, i3: negativei3 ? -i3 : i3, i4: i4, i5: i5, i6: i6)
-            main?.settings.activeSensorCalibrationInfo = calibrationInfo
+            DispatchQueue.main.async {
+                self.main?.settings.activeSensorCalibrationInfo = self.calibrationInfo
+            }
 
         }
     }

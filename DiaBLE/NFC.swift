@@ -321,9 +321,10 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
                 log("NFC: patch info: \(sensor.patchInfo.hex)")
                 log("NFC: sensor type: \(sensor.type.rawValue)")
 
-                // TODO: Expression is 'async' because of main acor
-                // main.settings.patchUid = sensor.uid
-                // main.settings.patchInfo = sensor.patchInfo
+                DispatchQueue.main.async {
+                    self.main.settings.patchUid = self.sensor.uid
+                    self.main.settings.patchInfo = self.sensor.patchInfo
+                }
             }
 
             log("NFC: sensor serial number: \(sensor.serial)")
@@ -524,7 +525,13 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
 
             do {
                 let (start, data) = try await read(from: 0, count: blocks)
-                await main.app.lastReadingDate = Date()
+                let lastReadingDate = Date()
+
+                // "Publishing changes from background threads is not allowed"
+                DispatchQueue.main.async {
+                    self.main.app.lastReadingDate = lastReadingDate
+                }
+                sensor.lastReadingDate = lastReadingDate
                 AudioServicesPlaySystemSound(kSystemSoundID_Vibrate)
                 session.invalidate()
                 log(data.hexDump(header: "NFC: did read \(data.count / 8) FRAM blocks:", startingBlock: start))
