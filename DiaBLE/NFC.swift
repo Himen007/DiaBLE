@@ -17,11 +17,20 @@ struct NFCCommand {
     var description: String = ""
 }
 
-enum NFCError: Error {
+enum NFCError: LocalizedError {
     case commandNotSupported
     case customCommandError
     case read
     case readBlocks
+
+    var errorDescription: String? {
+        switch self {
+        case .commandNotSupported: return "command not supported"
+        case .customCommandError:  return "custom command error"
+        case .read:                return "read error"
+        case .readBlocks:          return "reading blocks error"
+        }
+    }
 }
 
 
