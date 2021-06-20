@@ -331,21 +331,15 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
                 if taskRequest == .dump {
 
                     do {
-                        let (address, data) = try await readRaw(0x1A00, 64)
+                        var (address, data) = try await readRaw(0x1A00, 64)
                         log(data.hexDump(header: "Config RAM (patch UID at 0x1A08):", address: address))
-                    }
-                    do {
-                        let (address, data) = try await readRaw(0x1C00, 512)
+                        (address, data) = try await readRaw(0x1C00, 512)
                         log(data.hexDump(header: "SRAM:", address: address))
-                    }
-                    do {
-                        let (address, data) = try await readRaw(0xFFAC, 36)
+                        (address, data) = try await readRaw(0xFFAC, 36)
                         log(data.hexDump(header: "Patch table for A0-A4 E0-E2 commands:", address: address))
-                    }
-                    do {
-                        let (address, data) = try await readRaw(0xF860, 43 * 8)
+                        (address, data) = try await readRaw(0xF860, 43 * 8)
                         log(data.hexDump(header: "FRAM:", address: address))
-                    }
+                    } catch {}
 
                     do {
                         let (start, data) = try await read(from: 0, count: 43)
