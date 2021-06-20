@@ -725,7 +725,6 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
     }
 
 
-    @discardableResult
     func readBlocks(from start: Int, count blocks: Int, requesting: Int = 3, buffer: Data = Data()) async throws -> (Int, Data) {
 
         if sensor.securityGeneration < 1 {
@@ -767,7 +766,7 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
                 if remaining < requested {
                     requested = remaining
                 }
-                try await readBlocks(from: start, count: remaining, requesting: requested, buffer: buffer)
+                (_, buffer) = try await readBlocks(from: start, count: remaining, requesting: requested, buffer: buffer)
             }
         } catch {
             if requested == 1 {
@@ -832,7 +831,6 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
     }
 
 
-    @discardableResult
     func readRaw(_ address: Int, _ bytes: Int, buffer: Data = Data()) async throws -> (Int, Data) {
 
         if sensor.type != .libre1 {
@@ -865,7 +863,7 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
             remainingBytes -= data.count
 
             if remainingBytes != 0 {
-                try await readRaw(address, remainingBytes, buffer: buffer)
+                (_, buffer) = try await readRaw(address, remainingBytes, buffer: buffer)
             }
         } catch {
             debugLog("NFC: error while reading \(wordsToRead) words at raw memory 0x\(addressToRead.hex): \(error.localizedDescription) (ISO 15693 error 0x\(error.iso15693Code.hex): \(error.iso15693Description))")
