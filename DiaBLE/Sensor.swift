@@ -155,7 +155,7 @@ class Sensor: ObservableObject, Logging {
 
     var uid: SensorUid = Data() {
         willSet(uid) {
-            serial = serialNumber(uid: uid)
+            serial = serialNumber(uid: uid, family: self.family)
         }
     }
 
