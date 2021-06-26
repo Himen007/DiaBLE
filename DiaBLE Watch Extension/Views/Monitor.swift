@@ -8,7 +8,7 @@ struct Monitor: View {
     @EnvironmentObject var history: History
     @EnvironmentObject var settings: Settings
 
-    @Environment(\.presentationMode) var presentationMode
+    @Environment(\.dismiss) var dismiss
 
     @State private var showingHamburgerMenu = false
 
@@ -133,7 +133,7 @@ struct Monitor: View {
                 Spacer()
 
                 Button {
-                    self.presentationMode.wrappedValue.dismiss()
+                    dismiss()
                 } label: {
                     Image(systemName: "chevron.left.circle.fill").resizable().frame(width: 16, height: 16).foregroundColor(.blue)
                 }.frame(height: 16)
