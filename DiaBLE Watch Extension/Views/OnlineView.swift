@@ -50,18 +50,6 @@ struct OnlineView: View {
                     SecureField("token", text: $settings.nightscoutToken)
                 }
 
-                //                WebView(site: settings.nightscoutSite, query: "token=\(settings.nightscoutToken)", delegate: app.main?.nightscout )
-                //                    .frame(height: UIScreen.main.bounds.size.height * 0.60)
-                //                    .alert(isPresented: $app.showingJavaScriptConfirmAlert) {
-                //                        Alert(title: Text("JavaScript"),
-                //                              message: Text(app.JavaScriptConfirmAlertMessage),
-                //                              primaryButton: .default(Text("OK")) {
-                //                                app.main.log("JavaScript alert: selected OK") },
-                //                              secondaryButton: .cancel(Text("Cancel")) {
-                //                                app.main.log("JavaScript alert: selected Cancel") }
-                //                        )
-                //                }
-
             }.font(.footnote)
 
             List {

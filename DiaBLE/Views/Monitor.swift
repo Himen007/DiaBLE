@@ -185,12 +185,10 @@ struct Monitor: View {
                         }
                     }
                 }
-                .alert(isPresented: $showingNFCAlert) {
-                    Alert(
-                        title: Text("NFC not supported"),
-                        message: Text("This device doesn't allow scanning the Libre."))
+                .alert("NFC not supported", isPresented: $showingNFCAlert) {
+                } message: {
+                    Text("This device doesn't allow scanning the Libre.")
                 }
-
 
                 HamburgerMenu(showingHamburgerMenu: $showingHamburgerMenu)
                     .frame(width: 180)

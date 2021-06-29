@@ -283,10 +283,9 @@ struct Details: View {
                                 }.overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.accentColor, lineWidth: 2.5))
                             }
                             .foregroundColor(.accentColor)
-                            .alert(isPresented: $showingNFCAlert) {
-                                Alert(
-                                    title: Text("NFC not supported"),
-                                    message: Text("This device doesn't allow scanning the Libre."))
+                            .alert("NFC not supported", isPresented: $showingNFCAlert) {
+                            } message: {
+                                Text("This device doesn't allow scanning the Libre.")
                             }
                             Spacer()
                         }.padding(.vertical, 4)

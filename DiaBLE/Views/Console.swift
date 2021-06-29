@@ -145,10 +145,9 @@ struct Console: View {
                 }
             }
         }
-        .alert(isPresented: $showingNFCAlert) {
-            Alert(
-                title: Text("NFC not supported"),
-                message: Text("This device doesn't allow scanning the Libre."))
+        .alert("NFC not supported", isPresented: $showingNFCAlert) {
+        } message: {
+            Text("This device doesn't allow scanning the Libre.")
         }
         .confirmationDialog("Unlocking the Libre 2 is not reversible and will make it unreadable by LibreLink and other apps.", isPresented: $showingUnlockConfirmationDialog, titleVisibility: .visible) {
             Button("Unlock", role: .destructive) {

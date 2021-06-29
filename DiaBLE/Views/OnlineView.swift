@@ -64,10 +64,9 @@ struct OnlineView: View {
                         } label: {
                             Image("NFC").renderingMode(.template).resizable().frame(width: 39, height: 27).padding(.bottom, 12)
                         }
-                        .alert(isPresented: $showingNFCAlert) {
-                            Alert(
-                                title: Text("NFC not supported"),
-                                message: Text("This device doesn't allow scanning the Libre."))
+                        .alert("NFC not supported", isPresented: $showingNFCAlert) {
+                        } message: {
+                            Text("This device doesn't allow scanning the Libre.")
                         }
 
                     }.foregroundColor(.accentColor)
@@ -76,14 +75,11 @@ struct OnlineView: View {
 
                     WebView(site: settings.nightscoutSite, query: "token=\(settings.nightscoutToken)", delegate: app.main?.nightscout )
                         .frame(height: UIScreen.main.bounds.size.height * 0.60)
-                        .alert(isPresented: $app.showingJavaScriptConfirmAlert) {
-                            Alert(title: Text("JavaScript"),
-                                  message: Text(app.JavaScriptConfirmAlertMessage),
-                                  primaryButton: .default(Text("OK")) {
-                                    app.main.log("JavaScript alert: selected OK") },
-                                  secondaryButton: .cancel(Text("Cancel")) {
-                                    app.main.log("JavaScript alert: selected Cancel") }
-                            )
+                        .alert("JavaScript", isPresented: $app.showingJavaScriptConfirmAlert) {
+                            Button("OK") { app.main.log("JavaScript alert: selected OK") }
+                            Button("Cancel", role: .cancel) { app.main.log("JavaScript alert: selected Cancel") }
+                        } message: {
+                            Text(app.JavaScriptConfirmAlertMessage)
                         }
 
                     List {
