@@ -787,6 +787,65 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
     }
 
 
+    func readBlocks(from start: Int, count blocks: Int, requesting: Int = 3) async throws -> (Int, Data) {
+
+        if sensor.securityGeneration < 1 {
+            debugLog("readBlocks() B3 command not supported by \(sensor.type)")
+            throw NFCError.commandNotSupported
+        }
+
+        var buffer = Data()
+
+        var remaining = blocks
+        var requested = requesting
+
+        while remaining > 0 {
+
+            let blockToRead = start + buffer.count / 8
+
+            var readCommand = NFCCommand(code: 0xB3, parameters: Data([UInt8(blockToRead & 0xFF), UInt8(blockToRead >> 8), UInt8(requested - 1)]))
+            if requested == 1 {
+                readCommand = NFCCommand(code: 0xB0, parameters: Data([UInt8(blockToRead & 0xFF), UInt8(blockToRead >> 8)]))
+            }
+
+            if sensor.securityGeneration > 1 {
+                if blockToRead <= 255 {
+                    readCommand = NFCCommand(code: 0xA1, parameters: Data([0x21, UInt8(blockToRead), UInt8(requested - 1)]))
+                }
+            }
+
+            if buffer.count == 0 { debugLog("NFC: sending \(readCommand.code.hex) 07 \(readCommand.parameters.hex) command (\(sensor.type) read blocks)") }
+
+            do {
+                let output = try await connectedTag?.customCommand(requestFlags: .highDataRate, customCommandCode: readCommand.code, customRequestParameters: readCommand.parameters)
+                let data = Data(output!)
+
+                if sensor.securityGeneration < 2 {
+                    buffer += data
+                } else {
+                    buffer += data.suffix(data.count - 8)    // skip leading 0xA5 dummy bytes
+                }
+                remaining -= requested
+
+                if remaining != 0 {
+                    if remaining < requested {
+                        requested = remaining
+                    }
+                }
+            } catch {
+                if requested == 1 {
+                    log("NFC: error while reading block #\(blockToRead): \(error.localizedDescription) (ISO 15693 error 0x\(error.iso15693Code.hex): \(error.iso15693Description))")
+                } else {
+                    log("NFC: error while reading multiple blocks #\(blockToRead.hex) - #\((blockToRead + requested - 1).hex) (\(blockToRead)-\(blockToRead + requested - 1)): \(error.localizedDescription) (ISO 15693 error 0x\(error.iso15693Code.hex): \(error.iso15693Description))")
+                }
+                throw NFCError.readBlocks
+            }
+        }
+
+        return (start, buffer)
+    }
+
+
     // Libre 1 only
 
     func readRaw(_ address: Int, _ bytes: Int, buffer: Data = Data(), handler: @escaping (Int, Data, Error?) -> Void) {
