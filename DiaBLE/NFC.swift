@@ -833,6 +833,7 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
                     }
                 }
             } catch {
+                log(buffer.hexDump(header: "\(sensor.securityGeneration > 1 ? "`A1 21`" : "B0/B3") command output (\(buffer.count/8) blocks):", startingBlock: start))
                 if requested == 1 {
                     log("NFC: error while reading block #\(blockToRead): \(error.localizedDescription) (ISO 15693 error 0x\(error.iso15693Code.hex): \(error.iso15693Description))")
                 } else {
