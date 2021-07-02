@@ -1,5 +1,4 @@
 import Foundation
-import Combine
 import AVFoundation
 
 
@@ -271,7 +270,7 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
                 // "pop" vibration
                 AudioServicesPlaySystemSound(1520)
             } catch {
-                session.invalidate(errorMessage: "Error while getting system info: " + error.localizedDescription)
+                session.invalidate(errorMessage: "Error while getting system info: \(error.localizedDescription)")
                 log("NFC: error while getting system info: \(error.localizedDescription)")
                 return
             }
@@ -318,7 +317,7 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
 
             if sensor.patchInfo.count > 0 {
                 log("NFC: patch info: \(sensor.patchInfo.hex)")
-                log("NFC: sensor type: \(sensor.type.rawValue)")
+                log("NFC: sensor type: \(sensor.type.rawValue)\(sensor.patchInfo.hex.hasPrefix("a2") ? " (new 'A2' kind)" : "")")
 
                 DispatchQueue.main.async {
                     self.main.settings.patchUid = self.sensor.uid
@@ -566,7 +565,7 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
 
         // FIXME: "Feature not supported" error
         //        connectedTag?.readMultipleBlock(readConfiguration: NFCISO15693ReadMultipleBlocksConfiguration(range: NSRange(blockToRead ... blockToRead + requested - 1), chunkSize: 8, maximumRetries: 5, retryInterval: 0.1)) { data, error in
-        //            log("NFC: error while reading multiple blocks #\(blockToRead) - #\(blockToRead + requested - 1): \(error!) (ISO 15693 error 0x\(error!.iso15693Code.hex): \(error!.iso15693Description))")
+        //            log("NFC: error while reading multiple blocks #\(blockToRead.hex) - #\((blockToRead + requested - 1).hex) (\(blockToRead)-\(blockToRead + requested - 1)): \(error!) (ISO 15693 error 0x\(error!.iso15693Code.hex): \(error!.iso15693Description))")
         //        }
         //        connectedTag?.sendCustomCommand(commandConfiguration: NFCISO15693CustomCommandConfiguration(manufacturerCode: 7, customCommandCode: 0xA1, requestParameters: Data(), maximumRetries: 5, retryInterval: 0.1)) { data, error in
         //            log("NFC: custom command output: \(data.hex), error: \(error!) (ISO 15693 error 0x\(error!.iso15693Code.hex): \(error!.iso15693Description))")
@@ -577,7 +576,7 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
             switch result {
 
             case .failure(let error):
-                log("NFC: error while reading multiple blocks #\(blockToRead) - #\(blockToRead + requested - 1): \(error.localizedDescription) (ISO 15693 error 0x\(error.iso15693Code.hex): \(error.iso15693Description))")
+                log("NFC: error while reading multiple blocks #\(blockToRead.hex) - #\((blockToRead + requested - 1).hex) (\(blockToRead)-\(blockToRead + requested - 1)): \(error.localizedDescription) (ISO 15693 error 0x\(error.iso15693Code.hex): \(error.iso15693Description))")
                 if retries > 0 {
                     retries -= 1
                     log("NFC: retry # \(5 - retries)...")
@@ -702,7 +701,7 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
 
             case .failure(let error):
                 if requested == 1 {
-                    log("NFC: error while reading block #\(blockToRead): \(error.localizedDescription) (ISO 15693 error 0x\(error.iso15693Code.hex): \(error.iso15693Description))")
+                    log("NFC: error while reading block #\(blockToRead.hex): \(error.localizedDescription) (ISO 15693 error 0x\(error.iso15693Code.hex): \(error.iso15693Description))")
                 } else {
                     log("NFC: error while reading multiple blocks #\(blockToRead.hex) - #\((blockToRead + requested - 1).hex) (\(blockToRead)-\(blockToRead + requested - 1)): \(error.localizedDescription) (ISO 15693 error 0x\(error.iso15693Code.hex): \(error.iso15693Description))")
                 }
@@ -776,7 +775,7 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
             }
         } catch {
             if requested == 1 {
-                log("NFC: error while reading block #\(blockToRead): \(error.localizedDescription) (ISO 15693 error 0x\(error.iso15693Code.hex): \(error.iso15693Description))")
+                log("NFC: error while reading block #\(blockToRead.hex): \(error.localizedDescription) (ISO 15693 error 0x\(error.iso15693Code.hex): \(error.iso15693Description))")
             } else {
                 log("NFC: error while reading multiple blocks #\(blockToRead.hex) - #\((blockToRead + requested - 1).hex) (\(blockToRead)-\(blockToRead + requested - 1)): \(error.localizedDescription) (ISO 15693 error 0x\(error.iso15693Code.hex): \(error.iso15693Description))")
             }
@@ -835,7 +834,7 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
             } catch {
                 log(buffer.hexDump(header: "\(sensor.securityGeneration > 1 ? "`A1 21`" : "B0/B3") command output (\(buffer.count/8) blocks):", startingBlock: start))
                 if requested == 1 {
-                    log("NFC: error while reading block #\(blockToRead): \(error.localizedDescription) (ISO 15693 error 0x\(error.iso15693Code.hex): \(error.iso15693Description))")
+                    log("NFC: error while reading block #\(blockToRead.hex): \(error.localizedDescription) (ISO 15693 error 0x\(error.iso15693Code.hex): \(error.iso15693Description))")
                 } else {
                     log("NFC: error while reading multiple blocks #\(blockToRead.hex) - #\((blockToRead + requested - 1).hex) (\(blockToRead)-\(blockToRead + requested - 1)): \(error.localizedDescription) (ISO 15693 error 0x\(error.iso15693Code.hex): \(error.iso15693Description))")
                 }
