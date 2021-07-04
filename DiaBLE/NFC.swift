@@ -942,8 +942,8 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
 
     // Libre 1 only: overwrite mirrored FRAM blocks
 
-    /// To  enable E0 reset command: writeRaw(0xFFB8, Data([0xE0, 0x00]))
-    /// To  disable E0 again: writeRaw(0xFFB8, Data([0xAB, 0xAB]))
+    /// To enable E0 reset command: writeRaw(0xFFB8, Data([0xE0, 0x00]))
+    /// To disable E0 again: writeRaw(0xFFB8, Data([0xAB, 0xAB]))
     /// Both require recomputing and overwriting the commands CRC for fram[43 * 8 + 2 ..< (244 - 6) * 8])
 
     func writeRaw(_ address: Int, _ data: Data, handler: @escaping (Int, Data, Error?) -> Void) {

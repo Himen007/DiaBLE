@@ -166,8 +166,6 @@ struct Monitor: View {
                         }
                     }
 
-                    // FIXME: the NFC ToolbarItem makes the compiler unable to type-check this expression in reasonable time
-
                     ToolbarItem(placement: .navigationBarTrailing) {
                         Button {
                             if app.main.nfc.isAvailable {
@@ -176,12 +174,11 @@ struct Monitor: View {
                                 showingNFCAlert = true
                             }
                         } label: {
-                            // FIXME: stacked image disappears in SwiftUI 3
-                            // VStack(spacing: 0) {
-                            // original: .frame(width: 39, height: 27
-                            Image("NFC").renderingMode(.template).resizable().frame(width: 26, height: 18)
-                            // Text("Scan").font(.footnote)
-                            // }
+                            VStack(spacing: 0) {
+                                // original: .frame(width: 39, height: 27
+                                Image("NFC").renderingMode(.template).resizable().frame(width: 26, height: 18)
+                                Text("Scan").font(.footnote)
+                            }
                         }
                     }
                 }

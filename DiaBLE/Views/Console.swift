@@ -75,11 +75,10 @@ struct Console: View {
                 Button {
                     withAnimation { showingFilterField.toggle() }
                 } label: {
-                    // FIXME: stacked image disappears in SwiftUI 3
-                    // VStack(spacing: 0) {
-                    Image(systemName: filterString.isEmpty ? "line.horizontal.3.decrease.circle" : "line.horizontal.3.decrease.circle.fill")
-                    // Text("Filter").font(.footnote)
-                    // }
+                    VStack(spacing: 0) {
+                        Image(systemName: filterString.isEmpty ? "line.horizontal.3.decrease.circle" : "line.horizontal.3.decrease.circle.fill")
+                        Text("Filter").font(.footnote)
+                    }
                 }
 
                 Menu {
