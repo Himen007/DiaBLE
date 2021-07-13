@@ -286,11 +286,14 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
             let uid = tag.identifier.hex
             log("NFC: IC identifier: \(uid)")
 
-            var manufacturer = String(tag.icManufacturerCode)
-            if manufacturer == "7" {
+            var manufacturer = "\(tag.icManufacturerCode.hex)"
+            if manufacturer == "07" {
                 manufacturer.append(" (Texas Instruments)")
+            } else if manufacturer == "7a" {
+                manufacturer.append(" (Abbott Diabetes Care)")
+                sensor.type = .libre3
             }
-            log("NFC: IC manufacturer code: \(manufacturer)")
+            log("NFC: IC manufacturer code: 0x\(manufacturer)")
             log("NFC: IC serial number: \(tag.icSerialNumber.hex)")
 
             var rom = "RF430"
