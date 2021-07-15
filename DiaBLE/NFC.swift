@@ -265,6 +265,14 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
                 return
             }
 
+            // Libre 3 workaround: calling A1 before tag.sytemInfo makes them work
+
+            do {
+                sensor.patchInfo = Data(try await tag.customCommand(requestFlags: .highDataRate, customCommandCode: 0xA1, customRequestParameters: Data()))
+            } catch {
+                log("NFC: error while getting patch info: \(error.localizedDescription)")
+            }
+
             do {
                 systemInfo = try await tag.systemInfo(requestFlags: .highDataRate)
                 // "pop" vibration
@@ -286,12 +294,13 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
             let uid = tag.identifier.hex
             log("NFC: IC identifier: \(uid)")
 
-            var manufacturer = "\(tag.icManufacturerCode.hex)"
+            var manufacturer = tag.icManufacturerCode.hex
             if manufacturer == "07" {
                 manufacturer.append(" (Texas Instruments)")
             } else if manufacturer == "7a" {
                 manufacturer.append(" (Abbott Diabetes Care)")
                 sensor.type = .libre3
+                sensor.securityGeneration = 3 // TODO: test
             }
             log("NFC: IC manufacturer code: 0x\(manufacturer)")
             log("NFC: IC serial number: \(tag.icSerialNumber.hex)")
@@ -420,13 +429,13 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
                             readCommand.parameters += Data([UInt8(block), block != 42 ? 2 : 0])
                             commands.append(readCommand)
                         }
-                        // Find the only supported commands: A1, B1, B2, B4
-                        //     for c in 0xA0 ... 0xBF {
-                        //         commands.append(NFCCommand(code: c, description:"\(c.hex)"))
-                        //     }
+                        // Find the only supported Gen2 commands: A1, B1, B2, B4
+                        //    for c in 0xA0 ... 0xDF {
+                        //        commands.append(NFCCommand(code: c, description: c.hex))
+                        //    }
                     }
                     for cmd in commands {
-                        log("NFC: sending \(sensor.type) command to \(cmd.description): code: 0x\(cmd.code.hex), parameters: 0x\(cmd.parameters.hex)")
+                        log("NFC: sending \(sensor.type) '\(cmd)' command: code: 0x\(cmd.code.hex), parameters: 0x\(cmd.parameters.hex)")
                         do {
                             let output = try await tag.customCommand(requestFlags: .highDataRate, customCommandCode: cmd.code, customRequestParameters: cmd.parameters)
                             log("NFC: '\(cmd.description)' command output (\(output.count) bytes): 0x\(output.hex)")

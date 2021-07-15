@@ -55,9 +55,9 @@ class AppState: ObservableObject {
     @Published var deviceState: String = ""
     @Published var status: String = "Welcome to DiaBLE!"
 
-    @Published var showingJavaScriptConfirmAlert = false
-    @Published var JavaScriptConfirmAlertMessage = ""
-    @Published var JavaScriptAlertReturn = ""
+    @Published var showingJavaScriptConfirmAlert: Bool = false
+    @Published var JavaScriptConfirmAlertMessage: String = ""
+    @Published var JavaScriptAlertReturn: String = ""
 }
 
 
