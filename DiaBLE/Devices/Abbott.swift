@@ -10,15 +10,35 @@ class Abbott: Transmitter {
         case abbottCustom     = "FDE3"
         case bleLogin         = "F001"
         case compositeRawData = "F002"
+        case libre3data       = "089810CC-EF89-11E9-81B4-2A2AE2DBCCE4"
 
         var description: String {
             switch self {
             case .abbottCustom:     return "Abbott custom"
             case .bleLogin:         return "BLE login"
             case .compositeRawData: return "composite raw data"
+            case .libre3data:       return "Libre 3 data service"
             }
         }
     }
+
+
+    // Libre 3:
+    //
+    // data service:    089810CC-EF89-11E9-81B4-2A2AE2DBCCE4
+    // characteristics: 08981338-EF89-11E9-81B4-2A2AE2DBCCE4, properties: ["Notify", "Write"]
+    //                  08981482-EF89-11E9-81B4-2A2AE2DBCCE4, properties: ["Notify", "Read"]
+    //                  0898177A-EF89-11E9-81B4-2A2AE2DBCCE4, properties: ["Notify"]
+    //                  0898195A-EF89-11E9-81B4-2A2AE2DBCCE4, properties: ["Notify"]
+    //                  08981AB8-EF89-11E9-81B4-2A2AE2DBCCE4, properties: ["Notify"]
+    //                  08981BEE-EF89-11E9-81B4-2A2AE2DBCCE4, properties: ["Notify"]
+    //                  08981D24-EF89-11E9-81B4-2A2AE2DBCCE4, properties: ["Notify"]
+    //
+    // unknown service: 0898203A-EF89-11E9-81B4-2A2AE2DBCCE4
+    // characteristics: 08982198-EF89-11E9-81B4-2A2AE2DBCCE4, properties: ["Notify", "Write"]
+    //                  089822CE-EF89-11E9-81B4-2A2AE2DBCCE4, properties: ["Notify", "Write"]
+    //                  089823FA-EF89-11E9-81B4-2A2AE2DBCCE4, properties: ["Notify", "Write"]
+
 
     override class var knownUUIDs: [String] { UUID.allCases.map{$0.rawValue} }
 

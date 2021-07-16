@@ -39,6 +39,10 @@ class BluetoothDelegate: NSObject, CBCentralManagerDelegate, CBPeripheralDelegat
         let manufacturerData = advertisement[CBAdvertisementDataManufacturerDataKey] as? Data
         let dataServiceUUIDs = advertisement[CBAdvertisementDataServiceUUIDsKey] as? [CBUUID]
 
+        if let dataServiceUUIDs = dataServiceUUIDs, dataServiceUUIDs.count > 0, dataServiceUUIDs[0].uuidString == Abbott.UUID.libre3data.rawValue {
+            name = "ABBOTT\(name!)"    // Libre 3 device name is 12 chars long
+        }
+
         var didFindATransmitter = false
 
         if let name = name {
@@ -88,15 +92,21 @@ class BluetoothDelegate: NSObject, CBCentralManagerDelegate, CBPeripheralDelegat
         if name!.lowercased().hasPrefix("abbott") {
             app.transmitter = Abbott(peripheral: peripheral, main: main)
             app.device = app.transmitter
-            app.device.serial = String(name!.suffix(name!.count - 6))
-            switch app.device.serial.prefix(1) {
-            case "7":
-                app.device.name = "Libre Sense"
-                (app.transmitter as! Abbott).securityGeneration = 2
-            case "3":
-                app.device.name = "Libre 2"
-            default: app.device.name = "Libre"
-            // TODO: Libre 2 US / CA
+            if name!.count == 18 { // fictitious "ABBOTT" + Libre 3 real device name
+                app.device.name = "Libre 3"
+                (app.transmitter as! Abbott).securityGeneration = 3
+                app.lastReadingDate = Date() // TODO
+            } else {
+                app.device.serial = String(name!.suffix(name!.count - 6))
+                switch app.device.serial.prefix(1) {
+                case "7":
+                    app.device.name = "Libre Sense"
+                    (app.transmitter as! Abbott).securityGeneration = 2
+                case "3":
+                    app.device.name = "Libre 2"
+                default: app.device.name = "Libre"
+                    // TODO: Libre 2 US / CA
+                }
             }
             settings.activeSensorSerial = app.device.serial
 
