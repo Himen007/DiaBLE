@@ -383,7 +383,7 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
                         AudioServicesPlaySystemSound(kSystemSoundID_Vibrate)
 
                         let blocks = data.count / 8
-                        let command = sensor.securityGeneration > 1 ? "`A1 21`" : "B0/B3"
+                        let command = sensor.securityGeneration == 2 ? "`A1 21`" : "B0/B3"
 
                         log(data.hexDump(header: "\(command) command output (\(blocks) blocks):", startingBlock: start))
 
@@ -705,7 +705,7 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
             }
         }
 
-        if buffer.count == 0 { debugLog("NFC: sending \(readCommand.code.hex) 07 \(readCommand.parameters.hex) command (\(sensor.type) read blocks)") }
+        if buffer.count == 0 { debugLog("NFC: sending '\(readCommand.code.hex) \(readCommand.parameters.hex)' custom command (\(sensor.type) read blocks)") }
 
         connectedTag?.customCommand(requestFlags: .highDataRate, customCommandCode: readCommand.code, customRequestParameters: readCommand.parameters) { [self] result in
 
@@ -766,7 +766,7 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
             }
         }
 
-        if buffer.count == 0 { debugLog("NFC: sending \(readCommand.code.hex) 07 \(readCommand.parameters.hex) command (\(sensor.type) read blocks)") }
+        if buffer.count == 0 { debugLog("NFC: sending '\(readCommand.code.hex) \(readCommand.parameters.hex)' custom command (\(sensor.type) read blocks)") }
 
         do {
             let output = try await connectedTag?.customCommand(requestFlags: .highDataRate, customCommandCode: readCommand.code, customRequestParameters: readCommand.parameters)
@@ -819,13 +819,15 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
                 readCommand = NFCCommand(code: 0xB0, parameters: Data([UInt8(blockToRead & 0xFF), UInt8(blockToRead >> 8)]))
             }
 
-            if sensor.securityGeneration > 1 {
+            // FIXME: the Libre 3 replies to 'A1 21' with the error code C1 and with 105 blocks made of 0xA5 dummy bytes
+
+            if sensor.securityGeneration == 2 {
                 if blockToRead <= 255 {
                     readCommand = NFCCommand(code: 0xA1, parameters: Data([0x21, UInt8(blockToRead), UInt8(requested - 1)]))
                 }
             }
 
-            if buffer.count == 0 { debugLog("NFC: sending \(readCommand.code.hex) 07 \(readCommand.parameters.hex) command (\(sensor.type) read blocks)") }
+            if buffer.count == 0 { debugLog("NFC: sending '\(readCommand.code.hex) \(readCommand.parameters.hex)' custom command (\(sensor.type) read blocks)") }
 
             do {
                 let output = try await connectedTag?.customCommand(requestFlags: .highDataRate, customCommandCode: readCommand.code, customRequestParameters: readCommand.parameters)
@@ -879,7 +881,7 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
 
         let readRawCommand = NFCCommand(code: 0xA3, parameters: sensor.backdoor + [UInt8(addressToRead & 0xFF), UInt8(addressToRead >> 8), UInt8(wordsToRead)])
 
-        if buffer.count == 0 { debugLog("NFC: sending \(readRawCommand.code.hex) 07 \(readRawCommand.parameters.hex) command (\(sensor.type) read raw)") }
+        if buffer.count == 0 { debugLog("NFC: sending '\(readRawCommand.code.hex) \(readRawCommand.parameters.hex)' custom command (\(sensor.type) read raw)") }
 
         connectedTag?.customCommand(requestFlags: .highDataRate, customCommandCode: readRawCommand.code, customRequestParameters: readRawCommand.parameters) { [self] result in
 
@@ -927,7 +929,7 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
 
         let readRawCommand = NFCCommand(code: 0xA3, parameters: sensor.backdoor + [UInt8(addressToRead & 0xFF), UInt8(addressToRead >> 8), UInt8(wordsToRead)])
 
-        if buffer.count == 0 { debugLog("NFC: sending \(readRawCommand.code.hex) 07 \(readRawCommand.parameters.hex) command (\(sensor.type) read raw)") }
+        if buffer.count == 0 { debugLog("NFC: sending '\(readRawCommand.code.hex) \(readRawCommand.parameters.hex)' custom command (\(sensor.type) read raw)") }
 
         do {
             let output = try await connectedTag?.customCommand(requestFlags: .highDataRate, customCommandCode: readRawCommand.code, customRequestParameters: readRawCommand.parameters)
@@ -966,7 +968,7 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
         }
 
         // Unlock
-        debugLog("NFC: sending a4 07 \(sensor.backdoor.hex) command (\(sensor.type) unlock)")
+        debugLog("NFC: sending 'a4 \(sensor.backdoor.hex)' custom command (\(sensor.type) unlock)")
         connectedTag?.customCommand(requestFlags: .highDataRate, customCommandCode: 0xA4, customRequestParameters: sensor.backdoor) { [self] result in
 
             switch result {
