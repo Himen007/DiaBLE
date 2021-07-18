@@ -25,7 +25,7 @@ enum SensorType: String, CustomStringConvertible {
         case 0x9D: self = .libre2
         case 0x76: self = patchInfo[3] == 0x02 ? .libre2US : patchInfo[3] == 0x04 ? .libre2CA : patchInfo[2] >> 4 == 7 ? .libreSense : .unknown
         default:
-            if patchInfo.count > 6 { // Libre 3's NFC A1 command ruturns 28 bytes
+            if patchInfo.count > 6 { // Libre 3's NFC A1 command ruturns 35 or 28 bytes
                 self = .libre3
             } else {
                 self = .unknown
@@ -137,7 +137,7 @@ class Sensor: ObservableObject, Logging {
             } else {
                 type = .unknown
             }
-            if region == 0 && info.count > 3 {
+            if info.count > 3 {
                 region = Int(info[3])
             }
             if info.count >= 6 {

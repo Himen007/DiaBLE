@@ -266,6 +266,7 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
             }
 
             // Libre 3 workaround: calling A1 before tag.sytemInfo makes them work
+            // The first reading prepends further 7 0xA5 dummy bytes
 
             do {
                 sensor.patchInfo = Data(try await tag.customCommand(requestFlags: .highDataRate, customCommandCode: 0xA1, customRequestParameters: Data()))
@@ -383,7 +384,7 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
                         AudioServicesPlaySystemSound(kSystemSoundID_Vibrate)
 
                         let blocks = data.count / 8
-                        let command = sensor.securityGeneration == 2 ? "`A1 21`" : "B0/B3"
+                        let command = sensor.securityGeneration > 1 ? "`A1 21`" : "B0/B3"
 
                         log(data.hexDump(header: "\(command) command output (\(blocks) blocks):", startingBlock: start))
 
@@ -435,7 +436,7 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
                         //    }
                     }
                     for cmd in commands {
-                        log("NFC: sending \(sensor.type) '\(cmd)' command: code: 0x\(cmd.code.hex), parameters: 0x\(cmd.parameters.hex)")
+                        log("NFC: sending \(sensor.type) '\(cmd.description)' command: code: 0x\(cmd.code.hex), parameters: 0x\(cmd.parameters.hex)")
                         do {
                             let output = try await tag.customCommand(requestFlags: .highDataRate, customCommandCode: cmd.code, customRequestParameters: cmd.parameters)
                             log("NFC: '\(cmd.description)' command output (\(output.count) bytes): 0x\(output.hex)")
@@ -819,9 +820,9 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
                 readCommand = NFCCommand(code: 0xB0, parameters: Data([UInt8(blockToRead & 0xFF), UInt8(blockToRead >> 8)]))
             }
 
-            // FIXME: the Libre 3 replies to 'A1 21' with the error code C1 and with 105 blocks made of 0xA5 dummy bytes
+            // FIXME: the Libre 3 replies to 'A1 21' with the error code C1 and with 105 blocks made of 0xA5 dummy bytes to 'B0/B3'
 
-            if sensor.securityGeneration == 2 {
+            if sensor.securityGeneration > 1 {
                 if blockToRead <= 255 {
                     readCommand = NFCCommand(code: 0xA1, parameters: Data([0x21, UInt8(blockToRead), UInt8(requested - 1)]))
                 }
