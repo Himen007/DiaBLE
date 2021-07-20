@@ -192,6 +192,7 @@ enum TaskRequest {
     case enableStreaming
     case readFRAM
     case unlock
+    case reset
     case dump
 }
 
@@ -521,6 +522,13 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
                         sensor.unlockCode = currentUnlockCode
                     }
 
+                }
+
+                if taskRequest == .reset {
+                    try await reset()
+                    taskRequest = .none
+                    session.invalidate()
+                    return
                 }
             }
 
@@ -957,10 +965,6 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
 
     // Libre 1 only: overwrite mirrored FRAM blocks
 
-    /// To enable E0 reset command: writeRaw(0xFFB8, Data([0xE0, 0x00]))
-    /// To disable E0 again: writeRaw(0xFFB8, Data([0xAB, 0xAB]))
-    /// Both require recomputing and overwriting the commands CRC for fram[43 * 8 + 2 ..< (244 - 6) * 8])
-
     func writeRaw(_ address: Int, _ data: Data, handler: @escaping (Int, Data, Error?) -> Void) {
 
         if sensor.type != .libre1 {
@@ -1063,6 +1067,34 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
                 }
             }
         }
+    }
+
+
+    func reset() async throws {
+
+        if sensor.type != .libre1 {
+            debugLog("E0 reset command not supported by \(sensor.type)")
+            throw NFCError.commandNotSupported
+        }
+
+        var (commandsStart, commandsFram) = try await readRaw(0xF860 + 43 * 8, 195 * 8)
+
+        let E0Offset = 0xFFB6 - commandsStart
+        let A1Offset = 0xFFC6 - commandsStart
+        let E0Address = UInt16(commandsFram[E0Offset ... E0Offset + 1])
+        let A1Address = UInt16(commandsFram[A1Offset ... A1Offset + 1])
+        log("E0 and A1 commands' addresses: \(E0Address.hex) \(A1Address.hex) (should be fbae and f9ba)")
+
+        let originalCRC = crc16(commandsFram[2 ..< 195 * 8])
+        commandsFram[A1Offset]     = commandsFram[E0Offset]
+        commandsFram[A1Offset + 1] = commandsFram[E0Offset + 1]
+        let commandsCRC = crc16(commandsFram[2 ..< 195 * 8])
+        log("New commands CRC: \(commandsCRC.hex) (should be 6e01 or d531 for a Libre 1 A2), original CRC: \(originalCRC.hex) (should be 429e or f9ae for a Libre 1 A2)")
+        commandsFram[0] = UInt8(commandsCRC & 0xFF)
+        commandsFram[1] = UInt8(commandsCRC >> 8)
+
+        // TODO: async write
+
     }
 
 #endif    // !targetEnvironment(macCatalyst)

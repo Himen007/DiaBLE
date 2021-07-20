@@ -22,6 +22,7 @@ struct Console: View {
 
     @State private var showingNFCAlert: Bool = false
     @State private var showingUnlockConfirmationDialog: Bool = false
+    @State private var showingResetConfirmationDialog: Bool = false
     @State private var showingFilterField: Bool = false
     @State private var filterString: String = ""
 
@@ -123,6 +124,18 @@ struct Console: View {
                     Button {
                         if app.main.nfc.isAvailable {
                             app.main.settings.logging = true
+                            showingResetConfirmationDialog = true
+                        } else {
+                            showingNFCAlert = true
+                        }
+                    } label: {
+                        Label("Reset", systemImage: "00.circle")
+                    }
+
+
+                    Button {
+                        if app.main.nfc.isAvailable {
+                            app.main.settings.logging = true
                             app.main.nfc.taskRequest = .dump
                         } else {
                             showingNFCAlert = true
@@ -151,6 +164,11 @@ struct Console: View {
         .confirmationDialog("Unlocking the Libre 2 is not reversible and will make it unreadable by LibreLink and other apps.", isPresented: $showingUnlockConfirmationDialog, titleVisibility: .visible) {
             Button("Unlock", role: .destructive) {
                 app.main.nfc.taskRequest = .unlock
+            }
+        }
+        .confirmationDialog("[TO BE CONTINUED]\nConfirm to reset.", isPresented: $showingResetConfirmationDialog, titleVisibility: .visible) {
+            Button("Reset", role: .destructive) {
+                app.main.nfc.taskRequest = .reset
             }
         }
 
