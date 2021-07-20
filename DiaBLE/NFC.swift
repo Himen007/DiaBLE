@@ -636,10 +636,11 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
 
 
     func read(from start: Int, count blocks: Int, requesting: Int = 3, retries: Int = 5, buffer: Data = Data()) async throws -> (Int, Data) {
-        try await withUnsafeThrowingContinuation { continuation in
+        return try await withUnsafeThrowingContinuation { continuation in
             read(from: start, count: blocks, requesting: requesting, retries: retries, buffer: buffer) { start, data, error in
                 if let error = error {
                     continuation.resume(throwing: error)
+                    return
                 } else {
                     continuation.resume(returning: (start, data))
                 }
@@ -1070,6 +1071,19 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
     }
 
 
+    func writeRaw(_ address: Int, _ data: Data) async throws -> (Int, Data) {
+        return try await withUnsafeThrowingContinuation { continuation in
+            writeRaw(address, data) { address, data, error in
+                if let error = error {
+                    continuation.resume(throwing: error)
+                    return
+                }
+                continuation.resume(returning: (address, data))
+            }
+        }
+    }
+
+
     func reset() async throws {
 
         if sensor.type != .libre1 {
@@ -1093,7 +1107,7 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
         commandsFram[0] = UInt8(commandsCRC & 0xFF)
         commandsFram[1] = UInt8(commandsCRC >> 8)
 
-        // TODO: async write
+        // TODO: overwrite FRAM and CRC, call A1 then restore originals
 
     }
 
