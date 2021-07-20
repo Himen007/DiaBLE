@@ -52,29 +52,30 @@ extension Sensor {
         }
     }
 
-    var universalCommand: NFCCommand   { NFCCommand(code: 0xA1) }
+    var universalCommand: NFCCommand    { NFCCommand(code: 0xA1, description: "A1 universal prefix") }
+    var getPatchInfoCommand: NFCCommand { NFCCommand(code: 0xA1, description: "get patch info") }
 
     // Libre 1
-    var lockCommand: NFCCommand        { NFCCommand(code: 0xA2, parameters: backdoor) }
-    var readRawCommand: NFCCommand     { NFCCommand(code: 0xA3, parameters: backdoor) }
-    var unlockCommand: NFCCommand      { NFCCommand(code: 0xA4, parameters: backdoor) }
+    var lockCommand: NFCCommand         { NFCCommand(code: 0xA2, parameters: backdoor, description: "lock") }
+    var readRawCommand: NFCCommand      { NFCCommand(code: 0xA3, parameters: backdoor, description: "read raw") }
+    var unlockCommand: NFCCommand       { NFCCommand(code: 0xA4, parameters: backdoor, description: "unlock") }
 
     // Libre 2 / Pro
     // SEE: custom commands C0-C4 in TI RF430FRL15xH Firmware User's Guide
-    var readBlockCommand: NFCCommand   { NFCCommand(code: 0xB0) }
-    var readBlocksCommand: NFCCommand  { NFCCommand(code: 0xB3) }
+    var readBlockCommand: NFCCommand    { NFCCommand(code: 0xB0, description: "B0 read block") }
+    var readBlocksCommand: NFCCommand   { NFCCommand(code: 0xB3, description: "B3 read blocks") }
 
     /// replies with error 0x12 (.contentCannotBeChanged)
-    var writeBlockCommand: NFCCommand  { NFCCommand(code: 0xB1) }
+    var writeBlockCommand: NFCCommand   { NFCCommand(code: 0xB1, description: "B1 write block") }
 
     /// replies with errors 0x12 (.contentCannotBeChanged) or 0x0f (.unknown)
     /// writing three blocks is not supported because it exceeds the 32-byte input buffer
-    var writeBlocksCommand: NFCCommand { NFCCommand(code: 0xB4) }
+    var writeBlocksCommand: NFCCommand  { NFCCommand(code: 0xB4, description: "B4 write blocks") }
 
     /// Usual 1252 blocks limit:
     /// block 04e3 => error 0x11 (.blockAlreadyLocked)
     /// block 04e4 => error 0x10 (.blockNotAvailable)
-    var lockBlockCommand: NFCCommand   { NFCCommand(code: 0xB2) }
+    var lockBlockCommand: NFCCommand   { NFCCommand(code: 0xB2, description: "B2 lock block") }
 
 
     enum Subcommand: UInt8, CustomStringConvertible {
@@ -573,6 +574,21 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
     }
 
 #if !targetEnvironment(macCatalyst)    // the new Result handlers don't compile in Catalyst 14
+
+
+    @discardableResult
+    func send(_ cmd: NFCCommand) async throws -> Data {
+        var data = Data()
+        do {
+            debugLog("NFC: sending \(sensor.type) '\(cmd.code.hex) \(cmd.parameters.hex)' custom command\(cmd.description == "" ? "" : " (\(cmd.description))")")
+            let output = try await connectedTag?.customCommand(requestFlags: .highDataRate, customCommandCode: cmd.code, customRequestParameters: cmd.parameters)
+            data = Data(output!)
+        } catch {
+            log("NFC: \(sensor.type) '\(cmd.description) \(cmd.code.hex) \(cmd.parameters.hex)' custom command error: \(error.localizedDescription) (ISO 15693 error 0x\(error.iso15693Code.hex): \(error.iso15693Description))")
+            throw error
+        }
+        return data
+    }
 
 
     func read(from start: Int, count blocks: Int, requesting: Int = 3, retries: Int = 5, buffer: Data = Data(), handler: @escaping (Int, Data, Error?) -> Void) {
@@ -1107,7 +1123,9 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
         commandsFram[0] = UInt8(commandsCRC & 0xFF)
         commandsFram[1] = UInt8(commandsCRC >> 8)
 
-        // TODO: overwrite FRAM and CRC, call A1 then restore originals
+        // TODO: overwrite the A1 address and update CRC, call it, then restore originals
+        // try await send(sensor.unlockCommand)
+        try await send(sensor.lockCommand)
 
     }
 
