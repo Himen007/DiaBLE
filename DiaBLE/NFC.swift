@@ -256,7 +256,7 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
 
 #if !targetEnvironment(macCatalyst)    // the async methods and Result handlers don't compile in Catalyst
 
-        async {
+        Task {
 
             do {
                 try await session.connect(to: firstTag)
