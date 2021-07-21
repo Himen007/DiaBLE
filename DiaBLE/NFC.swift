@@ -46,7 +46,7 @@ extension Sensor {
     var activationCommand: NFCCommand {
         switch self.type {
         case .libre1, .libreProH:
-                      return NFCCommand(code: 0xA0, parameters: backdoor)
+                      return NFCCommand(code: 0xA0, parameters: backdoor, description: "activate")
         case .libre2: return nfcCommand(.activate)
         default:      return NFCCommand(code: 0x00)
         }
@@ -1087,6 +1087,7 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
     }
 
 
+    @discardableResult
     func writeRaw(_ address: Int, _ data: Data) async throws -> (Int, Data) {
         return try await withUnsafeThrowingContinuation { continuation in
             writeRaw(address, data) { address, data, error in
@@ -1123,9 +1124,13 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
         commandsFram[0] = UInt8(commandsCRC & 0xFF)
         commandsFram[1] = UInt8(commandsCRC >> 8)
 
-        // TODO: overwrite the A1 address and update CRC, call it, then restore originals
-        // try await send(sensor.unlockCommand)
-        try await send(sensor.lockCommand)
+        try await writeRaw(commandsStart + A1Offset, commandsFram[A1Offset ... A1Offset + 1])
+        try await writeRaw(commandsStart, commandsFram[0 ... 1])
+        try await send(sensor.getPatchInfoCommand)
+        try await writeRaw(commandsStart + A1Offset, Data([UInt8(A1Address & 0xFF), UInt8(A1Address >> 8)]))
+        try await writeRaw(commandsStart, Data([UInt8(originalCRC & 0xFF), UInt8(originalCRC >> 8)]))
+
+        // TODO: manage errors and verify integrity
 
     }
 

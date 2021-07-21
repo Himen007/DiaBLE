@@ -166,7 +166,7 @@ struct Console: View {
                 app.main.nfc.taskRequest = .unlock
             }
         }
-        .confirmationDialog("[TO BE CONTINUED]\nConfirm to reset.", isPresented: $showingResetConfirmationDialog, titleVisibility: .visible) {
+        .confirmationDialog("Resetting the sensor will clear its memory and put it in an inactivated state.", isPresented: $showingResetConfirmationDialog, titleVisibility: .visible) {
             Button("Reset", role: .destructive) {
                 app.main.nfc.taskRequest = .reset
             }
