@@ -1108,27 +1108,30 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
             throw NFCError.commandNotSupported
         }
 
-        var (commandsStart, commandsFram) = try await readRaw(0xF860 + 43 * 8, 195 * 8)
+        let (fram_addr, fram) = try await readRaw(0xF860 + 43 * 8, 195 * 8)
 
-        let E0Offset = 0xFFB6 - commandsStart
-        let A1Offset = 0xFFC6 - commandsStart
-        let E0Address = UInt16(commandsFram[E0Offset ... E0Offset + 1])
-        let A1Address = UInt16(commandsFram[A1Offset ... A1Offset + 1])
-        log("E0 and A1 commands' addresses: \(E0Address.hex) \(A1Address.hex) (should be fbae and f9ba)")
+        let e0_offset = 0xFFB6 - fram_addr
+        let a1_offset = 0xFFC6 - fram_addr
+        let e0_addr = UInt16(fram[e0_offset ... e0_offset + 1])
+        let a1_addr = UInt16(fram[a1_offset ... a1_offset + 1])
 
-        let originalCRC = crc16(commandsFram[2 ..< 195 * 8])
-        commandsFram[A1Offset]     = commandsFram[E0Offset]
-        commandsFram[A1Offset + 1] = commandsFram[E0Offset + 1]
-        let commandsCRC = crc16(commandsFram[2 ..< 195 * 8])
-        log("New commands CRC: \(commandsCRC.hex) (should be 6e01 or d531 for a Libre 1 A2), original CRC: \(originalCRC.hex) (should be 429e or f9ae for a Libre 1 A2)")
-        commandsFram[0] = UInt8(commandsCRC & 0xFF)
-        commandsFram[1] = UInt8(commandsCRC >> 8)
+        log("E0 and A1 commands' addresses: \(e0_addr.hex) \(a1_addr.hex) (should be fbae and f9ba)")
 
-        try await writeRaw(commandsStart + A1Offset, commandsFram[A1Offset ... A1Offset + 1])
-        try await writeRaw(commandsStart, commandsFram[0 ... 1])
+        let originalCRC = crc16(fram[2 ..< 195 * 8])
+        log("Commands section CRC: \(UInt16(fram[0...1]).hex), computed: \(originalCRC.hex) (should be 429e or f9ae for a Libre 1 A2)")
+
+        var patchedFram = Data(fram)
+        patchedFram[a1_offset ... a1_offset + 1] = e0_addr.data
+        let patchedCRC = crc16(patchedFram[2 ..< 195 * 8])
+        patchedFram[0...1] = patchedCRC.data
+
+        log("CRC after replacing the A1 command address with E0: \(patchedCRC.hex) (should be 6e01 or d531 for a Libre 1 A2)")
+
+        try await writeRaw(fram_addr + a1_offset, patchedFram[a1_offset ... a1_offset + 1])
+        try await writeRaw(fram_addr, patchedFram[0 ... 1])
         try await send(sensor.getPatchInfoCommand)
-        try await writeRaw(commandsStart + A1Offset, Data([UInt8(A1Address & 0xFF), UInt8(A1Address >> 8)]))
-        try await writeRaw(commandsStart, Data([UInt8(originalCRC & 0xFF), UInt8(originalCRC >> 8)]))
+        try await writeRaw(fram_addr + a1_offset, a1_addr.data)
+        try await writeRaw(fram_addr, originalCRC.data)
 
         // TODO: manage errors and verify integrity
 

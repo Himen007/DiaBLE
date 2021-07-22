@@ -66,6 +66,7 @@ extension UInt16 {
     }
 
     var hex: String { String(format: "%04x", self) }
+    var data: Data { Data([UInt8(self & 0xFF), UInt8(self >> 8)]) }
 }
 
 
