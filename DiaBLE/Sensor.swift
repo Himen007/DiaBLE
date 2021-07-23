@@ -399,17 +399,13 @@ func checksummedFRAM(_ data: Data) -> Data {
     let bodyCRC =   crc16(fram[ 3 * 8 + 2 ..< 40 * 8])
     let footerCRC = crc16(fram[40 * 8 + 2 ..< 43 * 8])
 
-    fram[ 0] =         UInt8(headerCRC & 0xFF)
-    fram[ 1] =         UInt8(headerCRC >> 8)
-    fram[ 3 * 8] =     UInt8(bodyCRC & 0xFF)
-    fram[ 3 * 8 + 1] = UInt8(bodyCRC >> 8)
-    fram[40 * 8] =     UInt8(footerCRC & 0xFF)
-    fram[40 * 8 + 1] = UInt8(footerCRC >> 8)
+    fram[0 ... 1] = headerCRC.data
+    fram[3 * 8 ... 3 * 8 + 1] = bodyCRC.data
+    fram[40 * 8 ... 40 * 8 + 1] = footerCRC.data
 
     if fram.count > 43 * 8 {
-        let commandsCRC = crc16(fram[43 * 8 + 2 ..< (244 - 6) * 8])    // Libre 1 DF: 0x429e, A2: 0xf9ae
-        fram[43 * 8] =     UInt8(commandsCRC & 0xFF)
-        fram[43 * 8 + 1] = UInt8(commandsCRC >> 8)
+        let commandsCRC = crc16(fram[43 * 8 + 2 ..< (244 - 6) * 8])    // Libre 1 DF: 429e, A2: f9ae
+        fram[43 * 8 ... 43 * 8 + 1] = commandsCRC.data
     }
     return fram
 }

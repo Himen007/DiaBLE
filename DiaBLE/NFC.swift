@@ -1108,30 +1108,30 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
             throw NFCError.commandNotSupported
         }
 
-        let (fram_addr, fram) = try await readRaw(0xF860 + 43 * 8, 195 * 8)
+        let (commandsFramAddress, commmandsFram) = try await readRaw(0xF860 + 43 * 8, 195 * 8)
 
-        let e0_offset = 0xFFB6 - fram_addr
-        let a1_offset = 0xFFC6 - fram_addr
-        let e0_addr = UInt16(fram[e0_offset ... e0_offset + 1])
-        let a1_addr = UInt16(fram[a1_offset ... a1_offset + 1])
+        let e0Offset = 0xFFB6 - commandsFramAddress
+        let a1Offset = 0xFFC6 - commandsFramAddress
+        let e0Address = UInt16(commmandsFram[e0Offset ... e0Offset + 1])
+        let a1Address = UInt16(commmandsFram[a1Offset ... a1Offset + 1])
 
-        log("E0 and A1 commands' addresses: \(e0_addr.hex) \(a1_addr.hex) (should be fbae and f9ba)")
+        log("E0 and A1 commands' addresses: \(e0Address.hex) \(a1Address.hex) (should be fbae and f9ba)")
 
-        let originalCRC = crc16(fram[2 ..< 195 * 8])
-        log("Commands section CRC: \(UInt16(fram[0...1]).hex), computed: \(originalCRC.hex) (should be 429e or f9ae for a Libre 1 A2)")
+        let originalCRC = crc16(commmandsFram[2 ..< 195 * 8])
+        log("Commands section CRC: \(UInt16(commmandsFram[0...1]).hex), computed: \(originalCRC.hex) (should be 429e or f9ae for a Libre 1 A2)")
 
-        var patchedFram = Data(fram)
-        patchedFram[a1_offset ... a1_offset + 1] = e0_addr.data
+        var patchedFram = Data(commmandsFram)
+        patchedFram[a1Offset ... a1Offset + 1] = e0Address.data
         let patchedCRC = crc16(patchedFram[2 ..< 195 * 8])
-        patchedFram[0...1] = patchedCRC.data
+        patchedFram[0 ... 1] = patchedCRC.data
 
         log("CRC after replacing the A1 command address with E0: \(patchedCRC.hex) (should be 6e01 or d531 for a Libre 1 A2)")
 
-        try await writeRaw(fram_addr + a1_offset, patchedFram[a1_offset ... a1_offset + 1])
-        try await writeRaw(fram_addr, patchedFram[0 ... 1])
+        try await writeRaw(commandsFramAddress + a1Offset, patchedFram[a1Offset ... a1Offset + 1])
+        try await writeRaw(commandsFramAddress, patchedFram[0 ... 1])
         try await send(sensor.getPatchInfoCommand)
-        try await writeRaw(fram_addr + a1_offset, a1_addr.data)
-        try await writeRaw(fram_addr, originalCRC.data)
+        try await writeRaw(commandsFramAddress + a1Offset, a1Address.data)
+        try await writeRaw(commandsFramAddress, originalCRC.data)
 
         // TODO: manage errors and verify integrity
 
