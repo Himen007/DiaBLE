@@ -527,6 +527,7 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
 
                 if taskRequest == .reset {
                     try await reset()
+                    sensor.detailFRAM()
                     taskRequest = .none
                     session.invalidate()
                     return
@@ -1115,23 +1116,30 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
         let e0Address = UInt16(commmandsFram[e0Offset ... e0Offset + 1])
         let a1Address = UInt16(commmandsFram[a1Offset ... a1Offset + 1])
 
-        log("E0 and A1 commands' addresses: \(e0Address.hex) \(a1Address.hex) (should be fbae and f9ba)")
+        debugLog("E0 and A1 commands' addresses: \(e0Address.hex) \(a1Address.hex) (should be fbae and f9ba)")
 
         let originalCRC = crc16(commmandsFram[2 ..< 195 * 8])
-        log("Commands section CRC: \(UInt16(commmandsFram[0...1]).hex), computed: \(originalCRC.hex) (should be 429e or f9ae for a Libre 1 A2)")
+        debugLog("Commands section CRC: \(UInt16(commmandsFram[0...1]).hex), computed: \(originalCRC.hex) (should be 429e or f9ae for a Libre 1 A2)")
 
         var patchedFram = Data(commmandsFram)
         patchedFram[a1Offset ... a1Offset + 1] = e0Address.data
         let patchedCRC = crc16(patchedFram[2 ..< 195 * 8])
         patchedFram[0 ... 1] = patchedCRC.data
 
-        log("CRC after replacing the A1 command address with E0: \(patchedCRC.hex) (should be 6e01 or d531 for a Libre 1 A2)")
+        debugLog("CRC after replacing the A1 command address with E0: \(patchedCRC.hex) (should be 6e01 or d531 for a Libre 1 A2)")
 
-        try await writeRaw(commandsFramAddress + a1Offset, patchedFram[a1Offset ... a1Offset + 1])
-        try await writeRaw(commandsFramAddress, patchedFram[0 ... 1])
-        try await send(sensor.getPatchInfoCommand)
-        try await writeRaw(commandsFramAddress + a1Offset, a1Address.data)
-        try await writeRaw(commandsFramAddress, originalCRC.data)
+        do {
+            try await writeRaw(commandsFramAddress + a1Offset, e0Address.data)
+            try await writeRaw(commandsFramAddress, patchedCRC.data)
+            try await send(sensor.getPatchInfoCommand)
+            try await writeRaw(commandsFramAddress + a1Offset, a1Address.data)
+            try await writeRaw(commandsFramAddress, originalCRC.data)
+
+            let (start, data) = try await read(from: 0, count: 43)
+            log(data.hexDump(header: "Resetted FRAM:", startingBlock: start))
+            sensor.fram = Data(data)
+        } catch {
+        }
 
         // TODO: manage errors and verify integrity
 
