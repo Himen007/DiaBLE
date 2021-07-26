@@ -380,18 +380,21 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
                     var count = sensor.encryptedFram.count > 0 ? 89 : 1252
                     if sensor.securityGeneration > 1 { count = 43 }
 
+                    let command = sensor.securityGeneration > 1 ? "A1 21" : "B0/B3"
+
                     do {
+                        defer {
+                            taskRequest = .none
+                            session.invalidate()
+                        }
+
                         let (start, data) = try await readBlocks(from: 0, count: count)
 
                         AudioServicesPlaySystemSound(kSystemSoundID_Vibrate)
 
                         let blocks = data.count / 8
-                        let command = sensor.securityGeneration > 1 ? "`A1 21`" : "B0/B3"
 
-                        log(data.hexDump(header: "\(command) command output (\(blocks) blocks):", startingBlock: start))
-
-                        taskRequest = .none
-                        session.invalidate()
+                        log(data.hexDump(header: "\'\(command)' command output (\(blocks) blocks):", startingBlock: start))
 
                         // await main actor
                         if await main.settings.debugLevel > 0 {
@@ -409,14 +412,8 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
                         }
 
                     } catch {
-                        log("NFC: \(error.localizedDescription) (ISO 15693 error 0x\(error.iso15693Code.hex): \(error.iso15693Description))")
-
-                        // TODO: use defer once
-                        taskRequest = .none
-                        session.invalidate()
-                        return
+                        log("NFC: 'read blocks \(command)' command error: \(error.localizedDescription) (ISO 15693 error 0x\(error.iso15693Code.hex): \(error.iso15693Description))")
                     }
-
                     return
                 }
 
@@ -1136,7 +1133,7 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
             try await writeRaw(commandsFramAddress, originalCRC.data)
 
             let (start, data) = try await read(from: 0, count: 43)
-            log(data.hexDump(header: "Resetted FRAM:", startingBlock: start))
+            log(data.hexDump(header: "NFC: did reset FRAM:", startingBlock: start))
             sensor.fram = Data(data)
         } catch {
         }
