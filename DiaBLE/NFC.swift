@@ -466,8 +466,7 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
             libre2:
                 if sensor.type == .libre2 {
                     let subCmd: Sensor.Subcommand = (taskRequest == .enableStreaming) ?
-                        .enableStreaming : (taskRequest == .activate) ?
-                        .activate : (taskRequest == .unlock) ?
+                        .enableStreaming : (taskRequest == .unlock) ?
                         .unlock :.unknown0x1c
 
                     // TODO
@@ -503,11 +502,6 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
                             // TODO: cancel connections also before enabling streaming?
                             await main.rescan()
 
-                        }
-
-                        if subCmd == .activate && output.count == 4 {
-                            log("NFC: after trying activating received \(output.hex) for the patch info \(sensor.patchInfo.hex)")
-                            // receiving 9d081000 for a patchInfo 9d0830010000
                         }
 
                         if subCmd == .unlock && output.count == 0 {

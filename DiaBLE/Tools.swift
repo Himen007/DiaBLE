@@ -95,15 +95,21 @@ extension NFC {
         }
 
         do {
-            try await send(sensor.activationCommand)
+            let output = try await send(sensor.activationCommand)
 
-            let (_, data) = try await read(fromBlock: 0, count: 43)
-            log("NFC: did send \(sensor.type) activation command")
-            sensor.fram = Data(data)
+            // Libre 2
+            if output.count == 4 {
+                log("NFC: after trying activating received \(output.hex) for the patch info \(sensor.patchInfo.hex)")
+                // receiving 9d081000 for a patchInfo 9d0830010000
+            }
+
         } catch {
         }
 
         // TODO: manage errors and verify integrity
+
+        let (_, data) = try await read(fromBlock: 0, count: 43)
+        sensor.fram = Data(data)
 
     }
 
