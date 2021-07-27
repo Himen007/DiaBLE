@@ -24,6 +24,7 @@ struct Console: View {
     @State private var showingUnlockConfirmationDialog: Bool = false
     @State private var showingResetConfirmationDialog: Bool = false
     @State private var showingProlongConfirmationDialog: Bool = false
+    @State private var showingActivateConfirmationDialog: Bool = false
     @State private var showingFilterField: Bool = false
     @State private var filterString: String = ""
 
@@ -147,6 +148,17 @@ struct Console: View {
                     Button {
                         if app.main.nfc.isAvailable {
                             app.main.settings.logging = true
+                            showingActivateConfirmationDialog = true
+                        } else {
+                            showingNFCAlert = true
+                        }
+                    } label: {
+                        Label("Activate", systemImage: "bolt.circle")
+                    }
+
+                    Button {
+                        if app.main.nfc.isAvailable {
+                            app.main.settings.logging = true
                             app.main.nfc.taskRequest = .dump
                         } else {
                             showingNFCAlert = true
@@ -185,6 +197,11 @@ struct Console: View {
         .confirmationDialog("Prolonging the sensor will overwrite its maximum life to 0xFFFF minutes (≈ 45.5 days)", isPresented: $showingProlongConfirmationDialog, titleVisibility: .visible) {
             Button("Prolong", role: .destructive) {
                 app.main.nfc.taskRequest = .prolong
+            }
+        }
+        .confirmationDialog("Activating a fresh/ened sensor will put it in the usual warming-up state for 60 minutes.", isPresented: $showingActivateConfirmationDialog, titleVisibility: .visible) {
+            Button("Activate", role: .destructive) {
+                app.main.nfc.taskRequest = .activate
             }
         }
 

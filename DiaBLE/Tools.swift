@@ -86,6 +86,28 @@ extension NFC {
 
     }
 
+
+    func activate() async throws {
+
+        if sensor.securityGeneration > 1 {
+            debugLog("Activating a \(sensor.type) is not supported")
+            throw NFCError.commandNotSupported
+        }
+
+        do {
+            try await send(sensor.activationCommand)
+
+            let (_, data) = try await read(fromBlock: 0, count: 43)
+            log("NFC: did send \(sensor.type) activation command")
+            sensor.fram = Data(data)
+        } catch {
+        }
+
+        // TODO: manage errors and verify integrity
+
+    }
+
+
 }
 
 #endif    // !os(watchOS) && !targetEnvironment(macCatalyst)
