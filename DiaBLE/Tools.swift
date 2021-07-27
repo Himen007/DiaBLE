@@ -63,17 +63,17 @@ extension NFC {
 
         let (footerAddress, footerFram) = try await readRaw(0xF860 + 40 * 8, 3 * 8)
 
-        let maxAgeOffset = 6
-        let maxLife = Int(footerFram[maxAgeOffset + 1]) << 8 + Int(footerFram[maxAgeOffset])
-        log("\(sensor.type) current maximum age: \(maxLife) minutes (\(maxLife.formattedInterval))")
+        let maxLifeOffset = 6
+        let maxLife = Int(footerFram[maxLifeOffset + 1]) << 8 + Int(footerFram[maxLifeOffset])
+        log("\(sensor.type) current maximum life: \(maxLife) minutes (\(maxLife.formattedInterval))")
 
         var patchedFram = Data(footerFram)
-        patchedFram[maxAgeOffset ... maxAgeOffset + 1] = Data([0xFF, 0xFF])
+        patchedFram[maxLifeOffset ... maxLifeOffset + 1] = Data([0xFF, 0xFF])
         let patchedCRC = crc16(patchedFram[2 ..< 3 * 8])
         patchedFram[0 ... 1] = patchedCRC.data
 
         do {
-            try await writeRaw(footerAddress + maxAgeOffset, patchedFram[maxAgeOffset ... maxAgeOffset + 1])
+            try await writeRaw(footerAddress + maxLifeOffset, patchedFram[maxLifeOffset ... maxLifeOffset + 1])
             try await writeRaw(footerAddress, patchedCRC.data)
 
             let (_, data) = try await read(from: 0, count: 43)
