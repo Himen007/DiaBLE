@@ -1,5 +1,9 @@
 import Foundation
 
+
+// https://github.com/ivalkou/LibreTools/blob/master/Sources/LibreTools/NFC/NFCManager.swift
+
+
 #if !os(watchOS) && !targetEnvironment(macCatalyst)
 
 import CoreNFC
@@ -41,6 +45,39 @@ extension NFC {
 
             let (start, data) = try await read(from: 0, count: 43)
             log(data.hexDump(header: "NFC: did reset FRAM:", startingBlock: start))
+            sensor.fram = Data(data)
+        } catch {
+        }
+
+        // TODO: manage errors and verify integrity
+
+    }
+
+
+    func prolong() async throws {
+
+        if sensor.type != .libre1 {
+            debugLog("FRAM overwriting not supported by \(sensor.type)")
+            throw NFCError.commandNotSupported
+        }
+
+        let (footerAddress, footerFram) = try await readRaw(0xF860 + 40 * 8, 3 * 8)
+
+        let maxAgeOffset = 6
+        let maxLife = Int(footerFram[maxAgeOffset + 1]) << 8 + Int(footerFram[maxAgeOffset])
+        log("\(sensor.type) current maximum age: \(maxLife) minutes (\(maxLife.formattedInterval))")
+
+        var patchedFram = Data(footerFram)
+        patchedFram[maxAgeOffset ... maxAgeOffset + 1] = Data([0xFF, 0xFF])
+        let patchedCRC = crc16(patchedFram[2 ..< 3 * 8])
+        patchedFram[0 ... 1] = patchedCRC.data
+
+        do {
+            try await writeRaw(footerAddress + maxAgeOffset, patchedFram[maxAgeOffset ... maxAgeOffset + 1])
+            try await writeRaw(footerAddress, patchedCRC.data)
+
+            let (_, data) = try await read(from: 0, count: 43)
+            log(Data(data.suffix(3 * 8)).hexDump(header: "NFC: did overwite FRAM footer:", startingBlock: 40))
             sensor.fram = Data(data)
         } catch {
         }

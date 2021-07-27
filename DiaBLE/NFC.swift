@@ -185,9 +185,6 @@ extension Error {
 }
 
 
-// https://github.com/ivalkou/LibreTools/blob/master/Sources/LibreTools/NFC/NFCManager.swift
-
-
 enum TaskRequest {
     case activate
     case enableStreaming
@@ -526,6 +523,14 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
 
                 if taskRequest == .reset {
                     try await reset()
+                    sensor.detailFRAM()
+                    taskRequest = .none
+                    session.invalidate()
+                    return
+                }
+
+                if taskRequest == .prolong {
+                    try await prolong()
                     sensor.detailFRAM()
                     taskRequest = .none
                     session.invalidate()

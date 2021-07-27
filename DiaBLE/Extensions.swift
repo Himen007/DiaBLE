@@ -15,7 +15,7 @@ extension Data {
         while offset < endIndex {
             _ = formIndex(&offsetEnd, offsetBy: 8, limitedBy: endIndex)
             if address != -1 { str += (address + offset).hex + " "}
-            if startingBlock != -1 { str += "#\(((startingBlock + offset) / 8).hex) " }
+            if startingBlock != -1 { str += "#\((startingBlock + offset / 8).hex) " }
             if address != -1 || startingBlock != -1 { str += " " }
             str += "\(self[offset ..< offsetEnd].reduce("", { $0 + $1.hex + " "}))"
             str += String(repeating: "   ", count: 8 - distance(from: offset, to: offsetEnd))

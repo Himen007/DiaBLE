@@ -23,6 +23,7 @@ struct Console: View {
     @State private var showingNFCAlert: Bool = false
     @State private var showingUnlockConfirmationDialog: Bool = false
     @State private var showingResetConfirmationDialog: Bool = false
+    @State private var showingProlongConfirmationDialog: Bool = false
     @State private var showingFilterField: Bool = false
     @State private var filterString: String = ""
 
@@ -132,6 +133,16 @@ struct Console: View {
                         Label("Reset", systemImage: "00.circle")
                     }
 
+                    Button {
+                        if app.main.nfc.isAvailable {
+                            app.main.settings.logging = true
+                            showingProlongConfirmationDialog = true
+                        } else {
+                            showingNFCAlert = true
+                        }
+                    } label: {
+                        Label("Prolong", systemImage: "infinity.circle")
+                    }
 
                     Button {
                         if app.main.nfc.isAvailable {
@@ -169,6 +180,11 @@ struct Console: View {
         .confirmationDialog("Resetting the sensor will clear its memory and put it in an inactivated state.", isPresented: $showingResetConfirmationDialog, titleVisibility: .visible) {
             Button("Reset", role: .destructive) {
                 app.main.nfc.taskRequest = .reset
+            }
+        }
+        .confirmationDialog("Prolonging the sensor will overwrite its maximum life to 0xFFFF minutes (≈ 45.5 days)", isPresented: $showingProlongConfirmationDialog, titleVisibility: .visible) {
+            Button("Prolong", role: .destructive) {
+                app.main.nfc.taskRequest = .prolong
             }
         }
 
