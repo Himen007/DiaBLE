@@ -43,7 +43,7 @@ extension NFC {
             try await writeRaw(commandsFramAddress + a1Offset, a1Address.data)
             try await writeRaw(commandsFramAddress, originalCRC.data)
 
-            let (start, data) = try await read(from: 0, count: 43)
+            let (start, data) = try await read(fromBlock: 0, count: 43)
             log(data.hexDump(header: "NFC: did reset FRAM:", startingBlock: start))
             sensor.fram = Data(data)
         } catch {
@@ -76,7 +76,7 @@ extension NFC {
             try await writeRaw(footerAddress + maxLifeOffset, patchedFram[maxLifeOffset ... maxLifeOffset + 1])
             try await writeRaw(footerAddress, patchedCRC.data)
 
-            let (_, data) = try await read(from: 0, count: 43)
+            let (_, data) = try await read(fromBlock: 0, count: 43)
             log(Data(data.suffix(3 * 8)).hexDump(header: "NFC: did overwite FRAM footer:", startingBlock: 40))
             sensor.fram = Data(data)
         } catch {

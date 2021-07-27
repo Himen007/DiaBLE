@@ -364,7 +364,7 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
                     } catch {}
 
                     do {
-                        let (start, data) = try await read(from: 0, count: 43)
+                        let (start, data) = try await read(fromBlock: 0, count: 43)
                         log(data.hexDump(header: "ISO 15693 FRAM blocks:", startingBlock: start))
                         sensor.fram = Data(data)
                         if sensor.encryptedFram.count > 0 && sensor.fram.count >= 344 {
@@ -546,7 +546,7 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
             }
 
             do {
-                let (start, data) = try await read(from: 0, count: blocks)
+                let (start, data) = try await read(fromBlock: 0, count: blocks)
                 let lastReadingDate = Date()
 
                 // "Publishing changes from background threads is not allowed"
@@ -596,7 +596,7 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
     }
 
 
-    func read(from start: Int, count blocks: Int, requesting: Int = 3, retries: Int = 5, buffer: Data = Data(), handler: @escaping (Int, Data, Error?) -> Void) {
+    func read(fromBlock start: Int, count blocks: Int, requesting: Int = 3, retries: Int = 5, buffer: Data = Data(), handler: @escaping (Int, Data, Error?) -> Void) {
 
         var buffer = buffer
         let blockToRead = start + buffer.count / 8
@@ -624,7 +624,7 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
                     log("NFC: retry # \(5 - retries)...")
                     usleep(100000)
                     AudioServicesPlaySystemSound(1520)    // "pop" vibration
-                    read(from: start, count: remaining, requesting: requested, retries: retries, buffer: buffer) { start, data, error in handler(start, data, error) }
+                    read(fromBlock: start, count: remaining, requesting: requested, retries: retries, buffer: buffer) { start, data, error in handler(start, data, error) }
 
                 } else {
                     if sensor.securityGeneration < 2 || taskRequest == .none {
@@ -649,16 +649,16 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
                     if remaining < requested {
                         requested = remaining
                     }
-                    read(from: start, count: remaining, requesting: requested, buffer: buffer) { start, data, error in handler(start, data, error) }
+                    read(fromBlock: start, count: remaining, requesting: requested, buffer: buffer) { start, data, error in handler(start, data, error) }
                 }
             }
         }
     }
 
 
-    func read(from start: Int, count blocks: Int, requesting: Int = 3, retries: Int = 5, buffer: Data = Data()) async throws -> (Int, Data) {
+    func read(fromBlock start: Int, count blocks: Int, requesting: Int = 3, retries: Int = 5, buffer: Data = Data()) async throws -> (Int, Data) {
         return try await withUnsafeThrowingContinuation { continuation in
-            read(from: start, count: blocks, requesting: requesting, retries: retries, buffer: buffer) { start, data, error in
+            read(fromBlock: start, count: blocks, requesting: requesting, retries: retries, buffer: buffer) { start, data, error in
                 if let error = error {
                     continuation.resume(throwing: error)
                     return
