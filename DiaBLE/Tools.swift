@@ -91,6 +91,31 @@ extension NFC {
             }
 
 
+        case .unlock:
+
+            if sensor.securityGeneration < 1 {
+                debugLog("'A1 1A unlock' command not supported by \(sensor.type)")
+                throw NFCError.commandNotSupported
+            }
+
+            do {
+                let output = try await send(sensor.unlockCommand)
+
+                // Libre 2
+                if output.count == 0 {
+                    log("NFC: FRAM should have been decrypted in-place")
+                }
+
+            } catch {
+
+                // TODO: manage errors and verify integrity
+
+            }
+
+            let (_, data) = try await read(fromBlock: 0, count: 43)
+            sensor.fram = Data(data)
+
+
         case .activate:
 
             if sensor.securityGeneration > 1 {

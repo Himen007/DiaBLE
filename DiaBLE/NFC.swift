@@ -466,8 +466,7 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
             libre2:
                 if sensor.type == .libre2 {
                     let subCmd: Sensor.Subcommand = (taskRequest == .enableStreaming) ?
-                        .enableStreaming : (taskRequest == .unlock) ?
-                        .unlock :.unknown0x1c
+                        .enableStreaming : .unknown0x1c
 
                     // TODO
                     if subCmd == .unknown0x1c { break libre2 }    // :)
@@ -504,10 +503,6 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
 
                         }
 
-                        if subCmd == .unlock && output.count == 0 {
-                            log("NFC: FRAM should have been decrypted in-place")
-                        }
-
                     } catch {
                         log("NFC: '\(cmd.description)' command error: \(error.localizedDescription) (ISO 15693 error 0x\(error.iso15693Code.hex): \(error.iso15693Description))")
                         sensor.unlockCode = currentUnlockCode
@@ -517,9 +512,12 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
 
                 if taskRequest == .reset ||
                     taskRequest == .prolong ||
+                    taskRequest == .unlock ||
                     taskRequest == .activate {
 
                     try await execute(taskRequest!)
+
+                    AudioServicesPlaySystemSound(kSystemSoundID_Vibrate)
 
                     sensor.detailFRAM()
                     taskRequest = .none
