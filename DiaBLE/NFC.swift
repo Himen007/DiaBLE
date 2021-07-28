@@ -515,29 +515,18 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
 
                 }
 
-                if taskRequest == .reset {
-                    try await reset()
+                if taskRequest == .reset ||
+                    taskRequest == .prolong ||
+                    taskRequest == .activate {
+
+                    try await execute(taskRequest!)
+
                     sensor.detailFRAM()
                     taskRequest = .none
                     session.invalidate()
                     return
                 }
 
-                if taskRequest == .prolong {
-                    try await prolong()
-                    sensor.detailFRAM()
-                    taskRequest = .none
-                    session.invalidate()
-                    return
-                }
-
-                if taskRequest == .activate {
-                    try await activate()
-                    sensor.detailFRAM()
-                    taskRequest = .none
-                    session.invalidate()
-                    return
-                }
             }
 
             var blocks = 43

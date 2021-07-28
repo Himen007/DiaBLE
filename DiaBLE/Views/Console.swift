@@ -112,49 +112,58 @@ struct Console: View {
                         Label("Read FRAM", systemImage: "memorychip")
                     }
 
-                    Button {
-                        if app.main.nfc.isAvailable {
-                            app.main.settings.logging = true
-                            showingUnlockConfirmationDialog = true
-                        } else {
-                            showingNFCAlert = true
+
+                    Menu {
+
+                        Button {
+                            if app.main.nfc.isAvailable {
+                                app.main.settings.logging = true
+                                showingUnlockConfirmationDialog = true
+                            } else {
+                                showingNFCAlert = true
+                            }
+                        } label: {
+                            Label("Unlock", systemImage: "lock.open")
                         }
+
+                        Button {
+                            if app.main.nfc.isAvailable {
+                                app.main.settings.logging = true
+                                showingResetConfirmationDialog = true
+                            } else {
+                                showingNFCAlert = true
+                            }
+                        } label: {
+                            Label("Reset", systemImage: "00.circle")
+                        }
+
+                        Button {
+                            if app.main.nfc.isAvailable {
+                                app.main.settings.logging = true
+                                showingProlongConfirmationDialog = true
+                            } else {
+                                showingNFCAlert = true
+                            }
+                        } label: {
+                            Label("Prolong", systemImage: "infinity.circle")
+                        }
+
+                        Button {
+                            if app.main.nfc.isAvailable {
+                                app.main.settings.logging = true
+                                showingActivateConfirmationDialog = true
+                            } else {
+                                showingNFCAlert = true
+                            }
+                        } label: {
+                            Label("Activate", systemImage: "bolt.circle")
+                        }
+
+
                     } label: {
-                        Label("Unlock", systemImage: "lock.open")
+                        Label("Hacks", systemImage: "wand.and.stars")
                     }
 
-                    Button {
-                        if app.main.nfc.isAvailable {
-                            app.main.settings.logging = true
-                            showingResetConfirmationDialog = true
-                        } else {
-                            showingNFCAlert = true
-                        }
-                    } label: {
-                        Label("Reset", systemImage: "00.circle")
-                    }
-
-                    Button {
-                        if app.main.nfc.isAvailable {
-                            app.main.settings.logging = true
-                            showingProlongConfirmationDialog = true
-                        } else {
-                            showingNFCAlert = true
-                        }
-                    } label: {
-                        Label("Prolong", systemImage: "infinity.circle")
-                    }
-
-                    Button {
-                        if app.main.nfc.isAvailable {
-                            app.main.settings.logging = true
-                            showingActivateConfirmationDialog = true
-                        } else {
-                            showingNFCAlert = true
-                        }
-                    } label: {
-                        Label("Activate", systemImage: "bolt.circle")
-                    }
 
                     Button {
                         if app.main.nfc.isAvailable {
