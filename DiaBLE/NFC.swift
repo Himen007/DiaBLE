@@ -417,17 +417,12 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
                 }
 
                 if sensor.securityGeneration > 1 {
-                    var commands: [NFCCommand] = [sensor.nfcCommand(.readAttribute),
+                    let commands: [NFCCommand] = [sensor.nfcCommand(.readAttribute),
                                                   sensor.nfcCommand(.readChallenge)
                     ]
 
                     // await main actor
                     if await main.settings.debugLevel > 0 {
-                        for block in stride(from: 0, through: 42, by: 3) {
-                            var readCommand = sensor.nfcCommand(.readBlocks)
-                            readCommand.parameters += Data([UInt8(block), block != 42 ? 2 : 0])
-                            commands.append(readCommand)
-                        }
                         // Find the only supported Gen2 commands: A1, B1, B2, B4
                         //    for c in 0xA0 ... 0xDF {
                         //        commands.append(NFCCommand(code: c, description: c.hex))
@@ -446,19 +441,6 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
                         } catch {
                             log("NFC: '\(cmd.description)' command error: \(error.localizedDescription) (ISO 15693 error 0x\(error.iso15693Code.hex): \(error.iso15693Description))")
                         }
-                    }
-
-                    do {
-                        defer {
-                            AudioServicesPlaySystemSound(kSystemSoundID_Vibrate)
-                            session.invalidate()    // ISO 15693 read command fails anyway
-                        }
-
-                        let (start, data) = try await readBlocks(from: 0, count: 43)
-                        let blocks = data.count / 8
-                        log(data.hexDump(header: "FRAM read using `A1 21` (\(blocks) blocks):", startingBlock: start))
-                    } catch {
-                        log("NFC: \(error.localizedDescription) (ISO 15693 error 0x\(error.iso15693Code.hex): \(error.iso15693Description))")
                     }
 
                 }
@@ -535,7 +517,9 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
             }
 
             do {
-                let (start, data) = try await read(fromBlock: 0, count: blocks)
+                let (start, data) = try await sensor.securityGeneration < 1 ?
+                read(fromBlock: 0, count: blocks) : readBlocks(from: 0, count: blocks)
+
                 let lastReadingDate = Date()
 
                 // "Publishing changes from background threads is not allowed"
@@ -843,7 +827,8 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
 
             if sensor.securityGeneration > 1 {
                 if blockToRead <= 255 {
-                    readCommand = NFCCommand(code: 0xA1, parameters: Data([0x21, UInt8(blockToRead), UInt8(requested - 1)]))
+                    readCommand = sensor.nfcCommand(.readBlocks)
+                    readCommand.parameters = Data([0x21, UInt8(blockToRead), UInt8(requested - 1)])
                 }
             }
 
@@ -856,6 +841,7 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
                 if sensor.securityGeneration < 2 {
                     buffer += data
                 } else {
+                    debugLog("'\(readCommand.code.hex) \(readCommand.parameters.hex) \(readCommand.description)' command output (\(data.count) bytes): 0x\(data.hex)")
                     buffer += data.suffix(data.count - 8)    // skip leading 0xA5 dummy bytes
                 }
                 remaining -= requested
