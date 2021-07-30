@@ -533,6 +533,7 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
                 sensor.fram = Data(data)
             } catch {
                 AudioServicesPlaySystemSound(kSystemSoundID_Vibrate)
+                session.invalidate(errorMessage: "\(error.localizedDescription)")
             }
 
             if taskRequest == .readFRAM {
