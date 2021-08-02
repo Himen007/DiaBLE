@@ -82,10 +82,10 @@ extension Sensor {
         case unlock          = 0x1a    // lets read FRAM in clear and dump further blocks with B0/B3
         case activate        = 0x1b
         case enableStreaming = 0x1e
+        case getSessionInfo  = 0x1f    // GEN_SECURITY_CMD_GET_SESSION_INFO
         case unknown0x10     = 0x10    // returns the number of parameters + 3
         case unknown0x1c     = 0x1c
         case unknown0x1d     = 0x1d    // disables Bluetooth
-        case unknown0x1f     = 0x1f    // unknown secret, GEN_SECURITY_CMD_GET_SESSION_INFO
         // Gen2
         case readChallenge   = 0x20    // returns 25 bytes
         case readBlocks      = 0x21
@@ -96,6 +96,7 @@ extension Sensor {
             case .unlock:          return "unlock"
             case .activate:        return "activate"
             case .enableStreaming: return "enable BLE streaming"
+            case .getSessionInfo:  return "get session info"
             case .readChallenge:   return "read security challenge"
             case .readBlocks:      return "read FRAM blocks"
             case .readAttribute:   return "read patch attribute"
