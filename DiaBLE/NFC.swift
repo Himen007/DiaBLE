@@ -705,9 +705,12 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
             readCommand = NFCCommand(code: 0xB0, parameters: Data([UInt8(blockToRead & 0xFF), UInt8(blockToRead >> 8)]))
         }
 
+        // FIXME: the Libre 3 replies to 'A1 21' with the error code C1 and with 105 blocks made of 0xA5 dummy bytes to 'B0/B3'
+
         if sensor.securityGeneration > 1 {
             if blockToRead <= 255 {
-                readCommand = NFCCommand(code: 0xA1, parameters: Data([0x21, UInt8(blockToRead), UInt8(requested - 1)]))
+                readCommand = sensor.nfcCommand(.readBlocks)
+                readCommand.parameters = Data([0x21, UInt8(blockToRead), UInt8(requested - 1)])
             }
         }
 
@@ -730,6 +733,7 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
                 if sensor.securityGeneration < 2 {
                     buffer += data
                 } else {
+                    debugLog("'\(readCommand.code.hex) \(readCommand.parameters.hex) \(readCommand.description)' command output (\(data.count) bytes): 0x\(data.hex)")
                     buffer += data.suffix(data.count - 8)    // skip leading 0xA5 dummy bytes
                 }
                 remaining -= requested
@@ -766,9 +770,12 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
             readCommand = NFCCommand(code: 0xB0, parameters: Data([UInt8(blockToRead & 0xFF), UInt8(blockToRead >> 8)]))
         }
 
+        // FIXME: the Libre 3 replies to 'A1 21' with the error code C1 and with 105 blocks made of 0xA5 dummy bytes to 'B0/B3'
+
         if sensor.securityGeneration > 1 {
             if blockToRead <= 255 {
-                readCommand = NFCCommand(code: 0xA1, parameters: Data([0x21, UInt8(blockToRead), UInt8(requested - 1)]))
+                readCommand = sensor.nfcCommand(.readBlocks)
+                readCommand.parameters = Data([0x21, UInt8(blockToRead), UInt8(requested - 1)])
             }
         }
 
@@ -781,6 +788,7 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
             if sensor.securityGeneration < 2 {
                 buffer += data
             } else {
+                debugLog("'\(readCommand.code.hex) \(readCommand.parameters.hex) \(readCommand.description)' command output (\(data.count) bytes): 0x\(data.hex)")
                 buffer += data.suffix(data.count - 8)    // skip leading 0xA5 dummy bytes
             }
             remaining -= requested
