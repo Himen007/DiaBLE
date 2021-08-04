@@ -108,9 +108,9 @@ extension Sensor {
 
     /// The customRequestParameters for 0xA1 are built by appending
     /// code + params (b) + usefulFunction(uid, code, secret (y))
-    func nfcCommand(_ code: Subcommand) -> NFCCommand {
+    func nfcCommand(_ code: Subcommand, parameters: Data = Data()) -> NFCCommand {
 
-        var parameters = Data([code.rawValue])
+        var parameters = Data([code.rawValue]) + parameters
 
         var b: [UInt8] = []
         var y: UInt16 = 0x1b6a
@@ -709,8 +709,7 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
 
         if sensor.securityGeneration > 1 {
             if blockToRead <= 255 {
-                readCommand = sensor.nfcCommand(.readBlocks)
-                readCommand.parameters = Data([0x21, UInt8(blockToRead), UInt8(requested - 1)])
+                readCommand = sensor.nfcCommand(.readBlocks, parameters: Data([UInt8(blockToRead), UInt8(requested - 1)]))
             }
         }
 
@@ -774,8 +773,7 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
 
         if sensor.securityGeneration > 1 {
             if blockToRead <= 255 {
-                readCommand = sensor.nfcCommand(.readBlocks)
-                readCommand.parameters = Data([0x21, UInt8(blockToRead), UInt8(requested - 1)])
+                readCommand = sensor.nfcCommand(.readBlocks, parameters: Data([UInt8(blockToRead), UInt8(requested - 1)]))
             }
         }
 
@@ -837,8 +835,7 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
 
             if sensor.securityGeneration > 1 {
                 if blockToRead <= 255 {
-                    readCommand = sensor.nfcCommand(.readBlocks)
-                    readCommand.parameters = Data([0x21, UInt8(blockToRead), UInt8(requested - 1)])
+                    readCommand = sensor.nfcCommand(.readBlocks, parameters: Data([UInt8(blockToRead), UInt8(requested - 1)]))
                 }
             }
 
