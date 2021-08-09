@@ -632,16 +632,50 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
 
 
     func read(fromBlock start: Int, count blocks: Int, requesting: Int = 3, retries: Int = 5, buffer: Data = Data()) async throws -> (Int, Data) {
-        return try await withUnsafeThrowingContinuation { continuation in
-            read(fromBlock: start, count: blocks, requesting: requesting, retries: retries, buffer: buffer) { start, data, error in
-                if let error = error {
-                    continuation.resume(throwing: error)
-                    return
+
+        var buffer = Data()
+
+        var remaining = blocks
+        var requested = requesting
+        var retries = retries
+
+        while remaining > 0 && retries > -1 {
+
+            let blockToRead = start + buffer.count / 8
+
+            do {
+                let dataArray = try await connectedTag?.readMultipleBlocks(requestFlags: .highDataRate, blockRange: NSRange(blockToRead ... blockToRead + requested - 1))
+
+                for data in dataArray! {
+                    buffer += data
+                }
+
+                remaining -= requested
+
+                if remaining != 0 && remaining < requested {
+                    requested = remaining
+                }
+
+            } catch {
+
+                log("NFC: error while reading multiple blocks #\(blockToRead.hex) - #\((blockToRead + requested - 1).hex) (\(blockToRead)-\(blockToRead + requested - 1)): \(error.localizedDescription) (ISO 15693 error 0x\(error.iso15693Code.hex): \(error.iso15693Description))")
+
+                if retries > 0 {
+                    retries -= 1
+                    log("NFC: retry # \(5 - retries)...")
+                    usleep(100000)
+                    AudioServicesPlaySystemSound(1520)    // "pop" vibration
+
                 } else {
-                    continuation.resume(returning: (start, data))
+                    if sensor.securityGeneration < 2 || taskRequest == .none {
+                        session?.invalidate(errorMessage: "Error while reading multiple blocks: \(error.localizedDescription.localizedLowercase)")
+                    }
+                    throw NFCError.read
                 }
             }
         }
+
+        return (start, buffer)
     }
 
 
@@ -853,13 +887,14 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
                 }
                 remaining -= requested
 
-                if remaining != 0 {
-                    if remaining < requested {
-                        requested = remaining
-                    }
+                if remaining != 0 && remaining < requested {
+                    requested = remaining
                 }
+
             } catch {
+
                 log(buffer.hexDump(header: "\(sensor.securityGeneration > 1 ? "`A1 21`" : "B0/B3") command output (\(buffer.count/8) blocks):", startingBlock: start))
+
                 if requested == 1 {
                     log("NFC: error while reading block #\(blockToRead.hex): \(error.localizedDescription) (ISO 15693 error 0x\(error.iso15693Code.hex): \(error.iso15693Description))")
                 } else {
