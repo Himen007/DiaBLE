@@ -21,6 +21,7 @@ enum NFCError: LocalizedError {
     case customCommandError
     case read
     case readBlocks
+    case write
 
     var errorDescription: String? {
         switch self {
@@ -28,6 +29,7 @@ enum NFCError: LocalizedError {
         case .customCommandError:  return "custom command error"
         case .read:                return "read error"
         case .readBlocks:          return "reading blocks error"
+        case .write:               return "write error"
         }
     }
 }
@@ -1105,17 +1107,70 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
     }
 
 
-    @discardableResult
-    func writeRaw(_ address: Int, _ data: Data) async throws -> (Int, Data) {
-        return try await withUnsafeThrowingContinuation { continuation in
-            writeRaw(address, data) { address, data, error in
-                if let error = error {
-                    continuation.resume(throwing: error)
-                    return
-                }
-                continuation.resume(returning: (address, data))
-            }
+    func writeRaw(_ address: Int, _ data: Data) async throws {
+
+        if sensor.type != .libre1 {
+            debugLog("FRAM overwriting not supported by \(sensor.type)")
+            throw NFCError.commandNotSupported
         }
+
+        try await send(sensor.unlockCommand)
+
+        let addressToRead = (address / 8) * 8
+        let startOffset = address % 8
+        let endAddressToRead = ((address + data.count - 1) / 8) * 8 + 7
+        let blocksToRead = (endAddressToRead - addressToRead) / 8 + 1
+
+        do {
+            let (readAddress, readData) = try await readRaw(addressToRead, blocksToRead * 8)
+            var msg = readData.hexDump(header: "NFC: blocks to overwrite:", address: readAddress)
+            var bytesToWrite = readData
+            bytesToWrite.replaceSubrange(startOffset ..< startOffset + data.count, with: data)
+            msg += "\(bytesToWrite.hexDump(header: "\nwith blocks:", address: addressToRead))"
+            debugLog(msg)
+
+            let startBlock = addressToRead / 8
+            let blocks = bytesToWrite.count / 8
+
+            if address >= 0xF860 {    // write to FRAM blocks
+
+                let requestBlocks = 2    // 3 doesn't work
+
+                let requests = Int(ceil(Double(blocks) / Double(requestBlocks)))
+                let remainder = blocks % requestBlocks
+                var blocksToWrite = [Data](repeating: Data(), count: blocks)
+
+                for i in 0 ..< blocks {
+                    blocksToWrite[i] = Data(bytesToWrite[i * 8 ... i * 8 + 7])
+                }
+
+                for i in 0 ..< requests {
+
+                    let startIndex = startBlock - 0xF860 / 8 + i * requestBlocks
+                    let endIndex = startIndex + (i == requests - 1 ? (remainder == 0 ? requestBlocks : remainder) : requestBlocks) - (requestBlocks > 1 ? 1 : 0)
+                    let blockRange = NSRange(startIndex ... endIndex)
+
+                    var dataBlocks = [Data]()
+                    for j in startIndex ... endIndex { dataBlocks.append(blocksToWrite[j - startIndex]) }
+
+                    do {
+                        try await connectedTag?.writeMultipleBlocks(requestFlags: .highDataRate, blockRange: blockRange, dataBlocks: dataBlocks)
+                        debugLog("NFC: wrote blocks 0x\(startIndex.hex) - 0x\(endIndex.hex) \(dataBlocks.reduce("", { $0 + $1.hex })) at 0x\(((startBlock + i * requestBlocks) * 8).hex)")
+                    } catch {
+                        log("NFC: error while writing multiple blocks 0x\(startIndex.hex)-0x\(endIndex.hex) \(dataBlocks.reduce("", { $0 + $1.hex })) at 0x\(((startBlock + i * requestBlocks) * 8).hex): \(error.localizedDescription)")
+                        throw NFCError.write
+                    }
+                }
+            }
+
+        } catch {
+
+            // TODO: manage errors
+
+            debugLog(error.localizedDescription)
+        }
+
+        try await send(sensor.lockCommand)
     }
 
 #endif    // !targetEnvironment(macCatalyst)
