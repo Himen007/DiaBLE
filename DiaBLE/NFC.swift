@@ -573,7 +573,7 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
     }
 
 
-    func read(fromBlock start: Int, count blocks: Int, requesting: Int = 3, retries: Int = 5, buffer: Data = Data()) async throws -> (Int, Data) {
+    func read(fromBlock start: Int, count blocks: Int, requesting: Int = 3, retries: Int = 5) async throws -> (Int, Data) {
 
         var buffer = Data()
 
@@ -730,43 +730,43 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
 
     // Libre 1 only
 
-    func readRaw(_ address: Int, _ bytes: Int, buffer: Data = Data()) async throws -> (Int, Data) {
+    func readRaw(_ address: Int, _ bytes: Int) async throws -> (Int, Data) {
 
         if sensor.type != .libre1 {
             debugLog("readRaw() A3 command not supported by \(sensor.type)")
             throw NFCError.commandNotSupported
         }
 
-        var buffer = buffer
-        let addressToRead = address + buffer.count
-
+        var buffer = Data()
         var remainingBytes = bytes
-        let bytesToRead = remainingBytes > 24 ? 24 : bytes
 
-        var remainingWords = bytes / 2
-        if bytes % 2 == 1 || ( bytes % 2 == 0 && addressToRead % 2 == 1 ) { remainingWords += 1 }
-        let wordsToRead = remainingWords > 12 ? 12 : remainingWords    // real limit is 15
+        while remainingBytes > 0 {
 
-        let readRawCommand = NFCCommand(code: 0xA3, parameters: sensor.backdoor + [UInt8(addressToRead & 0xFF), UInt8(addressToRead >> 8), UInt8(wordsToRead)])
+            let addressToRead = address + buffer.count
+            let bytesToRead = min(remainingBytes, 24)
 
-        if buffer.count == 0 { debugLog("NFC: sending '\(readRawCommand.code.hex) \(readRawCommand.parameters.hex)' custom command (\(sensor.type) read raw)") }
+            var remainingWords = remainingBytes / 2
+            if remainingBytes % 2 == 1 || ( remainingBytes % 2 == 0 && addressToRead % 2 == 1 ) { remainingWords += 1 }
+            let wordsToRead = min(remainingWords, 12)   // real limit is 15
 
-        do {
-            let output = try await connectedTag?.customCommand(requestFlags: .highDataRate, customCommandCode: readRawCommand.code, customRequestParameters: readRawCommand.parameters)
-            var data = Data(output!)
+            let readRawCommand = NFCCommand(code: 0xA3, parameters: sensor.backdoor + [UInt8(addressToRead & 0xFF), UInt8(addressToRead >> 8), UInt8(wordsToRead)])
 
-            if addressToRead % 2 == 1 { data = data.subdata(in: 1 ..< data.count) }
-            if data.count - bytesToRead == 1 { data = data.subdata(in: 0 ..< data.count - 1) }
+            if buffer.count == 0 { debugLog("NFC: sending '\(readRawCommand.code.hex) \(readRawCommand.parameters.hex)' custom command (\(sensor.type) read raw)") }
 
-            buffer += data
-            remainingBytes -= data.count
+            do {
+                let output = try await connectedTag?.customCommand(requestFlags: .highDataRate, customCommandCode: readRawCommand.code, customRequestParameters: readRawCommand.parameters)
+                var data = Data(output!)
 
-            if remainingBytes != 0 {
-                (_, buffer) = try await readRaw(address, remainingBytes, buffer: buffer)
+                if addressToRead % 2 == 1 { data = data.subdata(in: 1 ..< data.count) }
+                if data.count - bytesToRead == 1 { data = data.subdata(in: 0 ..< data.count - 1) }
+
+                buffer += data
+                remainingBytes -= data.count
+
+            } catch {
+                debugLog("NFC: error while reading \(wordsToRead) words at raw memory 0x\(addressToRead.hex): \(error.localizedDescription) (ISO 15693 error 0x\(error.iso15693Code.hex): \(error.iso15693Description))")
+                throw NFCError.customCommandError
             }
-        } catch {
-            debugLog("NFC: error while reading \(wordsToRead) words at raw memory 0x\(addressToRead.hex): \(error.localizedDescription) (ISO 15693 error 0x\(error.iso15693Code.hex): \(error.iso15693Description))")
-            throw NFCError.customCommandError
         }
 
         return (address, buffer)
