@@ -1,6 +1,49 @@
 import Foundation
 
 
+let libre2DumpMap = [
+    0x000:  (40,  "Extended header"),
+    0x028:  (32,  "Extended footer"),
+    0x048:  (296, "Body right-rotated by 4"),
+    0x170:  (24,  "FRAM header"),
+    0x188:  (296, "FRAM body"),
+    0x2b0:  (24,  "FRAM footer"),
+    0x2c8:  (34,  "Keys"),
+    0x2ea:  (10,  "MAC Address"),
+    0x26d8: (24,  "Table of enabled NFC commands")
+]
+
+// 0x2580: (4, "Libre 1 backdoor")
+// 0x25c5: (7, "BLE trend offsets")
+// 0x25d0 + 1: (4 + 8, "usefulFunction() and streaming unlock keys")
+
+// 0c8a  CMP.W  #0xadc2, &RF13MRXF
+// 0c90  JEQ  0c96
+// 0c92  MOV.B  #0, R12
+// 0c94  RET
+// 0c96  CMP.W  #0x2175, &RF13MRXF
+// 0c9c  JNE  0c92
+// 0c9e  MOV.B  #1, R12
+// 0ca0  RET
+
+// function at 24e2:
+//    if (param_1 == '\x1e') {
+//      param_3 = param_3 ^ param_4;
+//    }
+//    else {
+//      param_3 = 0x1b6a;
+//    }
+
+// 0800: RF13MCTL
+// 0802: RF13MINT
+// 0804: RF13MIV
+// 0806: RF13MRXF
+// 0808: RF13MTXF
+// 080a: RF13MCRC
+// 080c: RF13MFIFOFL
+// 080e: RF13MWMCFG
+
+
 // https://github.com/ivalkou/LibreTools/blob/master/Sources/LibreTools/Sensor/Libre2.swift
 
 enum Libre2 {
