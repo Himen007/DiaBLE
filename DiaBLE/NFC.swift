@@ -578,7 +578,7 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
 
         var remaining = blocks
         var requested = requesting
-        var retries = retries
+        var retry = 0
 
         // FIXME: "Feature not supported" error
         //        connectedTag?.readMultipleBlock(readConfiguration: NFCISO15693ReadMultipleBlocksConfiguration(range: NSRange(blockToRead ... blockToRead + requested - 1), chunkSize: 8, maximumRetries: 5, retryInterval: 0.1)) { data, error in
@@ -594,12 +594,12 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
 
             case .failure(let error):
                 log("NFC: error while reading multiple blocks #\(blockToRead.hex) - #\((blockToRead + requested - 1).hex) (\(blockToRead)-\(blockToRead + requested - 1)): \(error.localizedDescription) (ISO 15693 error 0x\(error.iso15693Code.hex): \(error.iso15693Description))")
-                if retries > 0 {
-                    retries -= 1
-                    log("NFC: retry # \(5 - retries)...")
+                retry += 1
+                if retry <= retries {
+                    log("NFC: retry # \(retry)...")
                     usleep(100000)
                     AudioServicesPlaySystemSound(1520)    // "pop" vibration
-                    read(fromBlock: start, count: remaining, requesting: requested, retries: retries, buffer: buffer) { start, data, error in handler(start, data, error) }
+                    read(fromBlock: start, count: remaining, requesting: requested, retries: retries - retry, buffer: buffer) { start, data, error in handler(start, data, error) }
 
                 } else {
                     if sensor.securityGeneration < 2 || taskRequest == .none {
@@ -637,9 +637,9 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
 
         var remaining = blocks
         var requested = requesting
-        var retries = retries
+        var retry = 0
 
-        while remaining > 0 && retries > -1 {
+        while remaining > 0 && retry <= retries {
 
             let blockToRead = start + buffer.count / 8
 
@@ -660,9 +660,9 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
 
                 log("NFC: error while reading multiple blocks #\(blockToRead.hex) - #\((blockToRead + requested - 1).hex) (\(blockToRead)-\(blockToRead + requested - 1)): \(error.localizedDescription) (ISO 15693 error 0x\(error.iso15693Code.hex): \(error.iso15693Description))")
 
-                if retries > 0 {
-                    retries -= 1
-                    log("NFC: retry # \(5 - retries)...")
+                retry += 1
+                if retry <= retries {
+                    log("NFC: retry # \(retry)...")
                     usleep(100000)
                     AudioServicesPlaySystemSound(1520)    // "pop" vibration
 
@@ -825,10 +825,8 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
             }
             remaining -= requested
 
-            if remaining != 0 {
-                if remaining < requested {
-                    requested = remaining
-                }
+            if remaining != 0 && remaining < requested {
+                requested = remaining
                 (_, buffer) = try await readBlocks(from: start, count: remaining, requesting: requested, buffer: buffer)
             }
         } catch {
