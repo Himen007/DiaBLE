@@ -420,16 +420,25 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
                 }
 
                 if sensor.securityGeneration > 1 {
-                    let commands: [NFCCommand] = [sensor.nfcCommand(.readAttribute),
+                    var commands: [NFCCommand] = [sensor.nfcCommand(.readAttribute),
                                                   sensor.nfcCommand(.readChallenge)
                     ]
 
                     // await main actor
                     if await main.settings.debugLevel > 0 {
-                        // Find the only supported Gen2 commands: A1, B1, B2, B4
-                        //    for c in 0xA0 ... 0xDF {
-                        //        commands.append(NFCCommand(code: c, description: c.hex))
-                        //    }
+
+                        for c in 0xA0 ... 0xDF {
+                            commands.append(NFCCommand(code: c, description: c.hex))
+                        }
+
+                        // Gen2 supported commands: A1, B1, B2, B4
+
+                        // Libre 3:
+                        // getting 28 bytes from A1: a500010001000000c04e1e0f0001040c013034345a4138434c367938
+                        // getting 0xC1 error from A0, A1 20-22, A8, A9, C8, C9
+                        // getting 64 0xA5 bytes from A2-A7, AB-C7, CA-DF
+                        // getting 22 bytes from AA: 444f4334323731352d313031112620120900806773e0
+                        // getting zeros from standard read command 0x23
                     }
                     for cmd in commands {
                         log("NFC: sending \(sensor.type) '\(cmd.description)' command: code: 0x\(cmd.code.hex), parameters: 0x\(cmd.parameters.hex)")
