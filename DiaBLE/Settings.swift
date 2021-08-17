@@ -31,8 +31,13 @@ class Settings: ObservableObject {
         "activeSensorPatchInfo": Data(),
         "activeSensorUnlockCode": 42,
         "activeSensorUnlockCount": 0,
-        "activeSensorCalibrationInfo": try! JSONEncoder().encode(CalibrationInfo()),
         "activeSensorMaxLife": 0,
+        "activeSensorCalibrationInfo": try! JSONEncoder().encode(CalibrationInfo()),
+
+        "calibrating": false,
+        "calibration": try! JSONEncoder().encode(Calibration()),
+        "oopCalibration": try! JSONEncoder().encode(Calibration()),
+
         // TODO: rename to currentSensorUid/PatchInfo
         "patchUid": Data(),
         "patchInfo": Data()
@@ -146,12 +151,26 @@ class Settings: ObservableObject {
         didSet { UserDefaults.standard.set(self.activeSensorUnlockCount, forKey: "activeSensorUnlockCount") }
     }
 
+    @Published var activeSensorMaxLife: Int = UserDefaults.standard.integer(forKey: "activeSensorMaxLife") {
+        didSet { UserDefaults.standard.set(self.activeSensorMaxLife, forKey: "activeSensorMaxLife") }
+    }
+
     @Published var activeSensorCalibrationInfo: CalibrationInfo = try! JSONDecoder().decode(CalibrationInfo.self, from: UserDefaults.standard.data(forKey: "activeSensorCalibrationInfo")!) {
         didSet { UserDefaults.standard.set(try! JSONEncoder().encode(self.activeSensorCalibrationInfo), forKey: "activeSensorCalibrationInfo") }
     }
 
-    @Published var activeSensorMaxLife: Int = UserDefaults.standard.integer(forKey: "activeSensorMaxLife") {
-        didSet { UserDefaults.standard.set(self.activeSensorMaxLife, forKey: "activeSensorMaxLife") }
+    @Published var calibrating: Bool = UserDefaults.standard.bool(forKey: "calibrating") {
+        didSet { UserDefaults.standard.set(self.calibrating, forKey: "calibrating") }
+    }
+
+    @Published var calibration: Calibration = try! JSONDecoder().decode(Calibration.self, from: UserDefaults.standard.data(forKey: "calibration")!) {
+        didSet { UserDefaults.standard.set(try! JSONEncoder().encode(self.calibration), forKey: "calibration") }
+    }
+
+    @Published var oopServer: OOPServer = OOPServer.default
+
+    @Published var oopCalibration: Calibration = try! JSONDecoder().decode(Calibration.self, from: UserDefaults.standard.data(forKey: "oopCalibration")!) {
+        didSet { UserDefaults.standard.set(try! JSONEncoder().encode(self.oopCalibration), forKey: "oopCalibration") }
     }
 
     @Published var patchUid: SensorUid = UserDefaults.standard.data(forKey: "patchUid")! {

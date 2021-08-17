@@ -651,7 +651,7 @@ class NFC: NSObject, NFCTagReaderSessionDelegate, Logging {
                 readCommand = NFCCommand(code: 0xB0, parameters: Data([UInt8(blockToRead & 0xFF), UInt8(blockToRead >> 8)]))
             }
 
-            // FIXME: the Libre 3 replies to 'A1 21' with the error code C1 and with 105 blocks made of 0xA5 dummy bytes to 'B0/B3'
+            // FIXME: the Libre 3 replies to 'A1 21' with the error code C1
 
             if sensor.securityGeneration > 1 {
                 if blockToRead <= 255 {

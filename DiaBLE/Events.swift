@@ -63,7 +63,7 @@ class EventKit: Logging {
 
             if currentGlucose != 0 {
                 title += "  \(self.main.settings.displayingMillimoles ? GlucoseUnit.mmoll : GlucoseUnit.mgdl)"
-                title += "  \(LibreAlarm(rawValue: self.main.app.oopAlarm)?.description ?? "")  \(LibreTrendArrow(rawValue: self.main.app.oopTrend)?.symbol ?? "---")"
+                title += "  \(OOP.Alarm(rawValue: self.main.app.oopAlarm)?.description ?? "")  \(OOP.TrendArrow(rawValue: self.main.app.oopTrend)?.symbol ?? "---")"
 
                 // TODO: delta
 

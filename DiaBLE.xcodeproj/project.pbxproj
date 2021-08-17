@@ -23,6 +23,8 @@
 		C53C76ED23D9AFD700B59A98 /* Nightscout.swift in Sources */ = {isa = PBXBuildFile; fileRef = C53C76EC23D9AFD700B59A98 /* Nightscout.swift */; };
 		C53C76EF23D9B87A00B59A98 /* OnlineView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C53C76EE23D9B87A00B59A98 /* OnlineView.swift */; };
 		C549DD0023F198B700088A4C /* Events.swift in Sources */ = {isa = PBXBuildFile; fileRef = C549DCFF23F198B700088A4C /* Events.swift */; };
+		C54B46CB26CC3EF700870B6E /* OOP.swift in Sources */ = {isa = PBXBuildFile; fileRef = C54B46CA26CC3EF700870B6E /* OOP.swift */; };
+		C54B46CC26CC3EF700870B6E /* OOP.swift in Sources */ = {isa = PBXBuildFile; fileRef = C54B46CA26CC3EF700870B6E /* OOP.swift */; };
 		C5521C8223BB5D5A00826CFB /* App.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5521C8123BB5D5A00826CFB /* App.swift */; };
 		C55A7F9B253F3EBD00423648 /* NFC.swift in Sources */ = {isa = PBXBuildFile; fileRef = C597AF6A23AB9E3E0012926C /* NFC.swift */; };
 		C55AE3B5245EB1A3009636E0 /* DataView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C55AE3B4245EB1A3009636E0 /* DataView.swift */; };
@@ -141,6 +143,7 @@
 		C53C76EC23D9AFD700B59A98 /* Nightscout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Nightscout.swift; sourceTree = "<group>"; };
 		C53C76EE23D9B87A00B59A98 /* OnlineView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnlineView.swift; sourceTree = "<group>"; };
 		C549DCFF23F198B700088A4C /* Events.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Events.swift; sourceTree = "<group>"; };
+		C54B46CA26CC3EF700870B6E /* OOP.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = OOP.swift; sourceTree = "<group>"; };
 		C5521C8123BB5D5A00826CFB /* App.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App.swift; sourceTree = "<group>"; };
 		C55AE3B4245EB1A3009636E0 /* DataView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataView.swift; sourceTree = "<group>"; };
 		C55B5D15245FCBE50004FE3B /* OnlineView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnlineView.swift; sourceTree = "<group>"; };
@@ -338,6 +341,7 @@
 				C549DCFF23F198B700088A4C /* Events.swift */,
 				C5C937E323CBA0AE00A87BAB /* Health.swift */,
 				C597AF6A23AB9E3E0012926C /* NFC.swift */,
+				C54B46CA26CC3EF700870B6E /* OOP.swift */,
 				C59FE28B26AFD7A600F7F18F /* Tools.swift */,
 				C53C76EC23D9AFD700B59A98 /* Nightscout.swift */,
 				C5E1014223A2774D00678DF6 /* Assets.xcassets */,
@@ -515,6 +519,7 @@
 				C517F87226404B0A0038FEAB /* Bubble.swift in Sources */,
 				C5ADAF40245B4CCF003A2E8B /* BluetoothDelegate.swift in Sources */,
 				C5E9C75A2444967300D52B32 /* Sensor.swift in Sources */,
+				C54B46CC26CC3EF700870B6E /* OOP.swift in Sources */,
 				C5D1AFE72599D5FA00F6C4C9 /* Abbott.swift in Sources */,
 				C5E9C7592444966A00D52B32 /* Bluetooth.swift in Sources */,
 				C58507AD23C50BF40079539D /* ContentView.swift in Sources */,
@@ -570,6 +575,7 @@
 				C5FB2EF323A2794D0046F4F9 /* MainDelegate.swift in Sources */,
 				C5ADAF42245B4E56003A2E8B /* Device.swift in Sources */,
 				C5C7187B23E2FB5000D04EA7 /* Glucose.swift in Sources */,
+				C54B46CB26CC3EF700870B6E /* OOP.swift in Sources */,
 				C5C937E423CBA0AE00A87BAB /* Health.swift in Sources */,
 				C5DF10F423C783140023E0E2 /* Console.swift in Sources */,
 				C572310C2643C17800F51A47 /* MiaoMiao.swift in Sources */,

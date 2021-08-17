@@ -252,7 +252,7 @@ public class MainDelegate: UIResponder, UIApplicationDelegate, UIWindowSceneDele
             playAlarm()
             if (settings.calendarTitle == "" || !settings.calendarAlarmIsOn) && !settings.disabledNotifications { // TODO: notifications settings
                 title += "  \(settings.displayingMillimoles ? GlucoseUnit.mmoll : GlucoseUnit.mgdl)"
-                title += "  \(LibreAlarm(rawValue: app.oopAlarm)?.description ?? "")  \(LibreTrendArrow(rawValue: app.oopTrend)?.symbol ?? "---")"
+                title += "  \(OOP.Alarm(rawValue: app.oopAlarm)?.description ?? "")  \(OOP.TrendArrow(rawValue: app.oopTrend)?.symbol ?? "---")"
                 let content = UNMutableNotificationContent()
                 content.title = title
                 content.subtitle = ""

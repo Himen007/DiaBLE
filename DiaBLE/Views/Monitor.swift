@@ -54,7 +54,7 @@ struct Monitor: View {
                                         Text("\(app.trendDeltaMinutes) min").font(.footnote)
                                     }.frame(maxWidth: .infinity, alignment: .leading).padding(.leading, 12)
                                 } else {
-                                    Text(LibreTrendArrow(rawValue: app.oopTrend)?.symbol ?? "---").font(.largeTitle).bold()
+                                    Text(OOP.TrendArrow(rawValue: app.oopTrend)?.symbol ?? "---").font(.largeTitle).bold()
                                         .frame(maxWidth: .infinity, alignment: .leading).padding(.leading, 12)
                                 }
                             }.foregroundColor(app.currentGlucose > 0 && (app.currentGlucose > Int(settings.alarmHigh) && app.trendDelta > 0 || app.currentGlucose < Int(settings.alarmLow)) && app.trendDelta < 0 ?

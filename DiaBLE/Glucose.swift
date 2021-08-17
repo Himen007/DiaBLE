@@ -343,6 +343,38 @@ func factoryGlucose(raw: Glucose, calibrationInfo: CalibrationInfo) -> Glucose {
 }
 
 
+struct Calibration: Codable, Equatable {
+    var slope: Double = 0.0
+    var offset: Double = 0.0
+    var slopeSlope: Double = 0.0
+    var slopeOffset: Double = 0.0
+    var offsetOffset: Double = 0.0
+    var offsetSlope: Double = 0.0
+    var extraSlope: Double = 1.0
+    var extraOffset: Double = 0.0
+
+    enum CodingKeys: String, CodingKey, CustomStringConvertible {
+        case slopeSlope   = "slope_slope"
+        case slopeOffset  = "slope_offset"
+        case offsetOffset = "offset_offset"
+        case offsetSlope  = "offset_slope"
+
+        // Pay attention to the inversions:
+        // enums are intended to be read as "term + subfix", therefore .slopeOffset = "slope of the offset" => "Offset slope"
+        var description: String {
+            switch self {
+            case .slopeSlope:   return "Slope slope"
+            case .slopeOffset:  return "Offset slope"
+            case .offsetOffset: return "Offset offset"
+            case .offsetSlope:  return "Slope offset"
+            }
+        }
+    }
+
+    static var empty = Calibration()
+}
+
+
 // https://github.com/gshaviv/ninety-two/blob/master/WoofWoof/TrendSymbol.swift
 
 public func trendSymbol(for trend: Double) -> String {
@@ -400,44 +432,3 @@ enum GlucoseDataQuality: Int, CustomStringConvertible {
     }
 }
 
-
-enum LibreTrendArrow: String, CaseIterable {
-    case NOT_DETERMINED
-    case FALLING_QUICKLY
-    case FALLING
-    case STABLE
-    case RISING
-    case RISING_QUICKLY
-
-    var symbol: String {
-        switch self {
-        case .FALLING_QUICKLY: return "↓"
-        case .FALLING:         return "↘︎"
-        case .STABLE:          return "→"
-        case .RISING:          return "↗︎"
-        case .RISING_QUICKLY:  return "↑"
-        default:               return "---"
-        }
-    }
-}
-
-
-enum LibreAlarm: String, CaseIterable {
-    case NOT_DETERMINED
-    case LOW_GLUCOSE
-    case PROJECTED_LOW_GLUCOSE
-    case GLUCOSE_OK
-    case PROJECTED_HIGH_GLUCOSE
-    case HIGH_GLUCOSE
-
-    var description: String {
-        switch self {
-        case .LOW_GLUCOSE:            return "LOW"
-        case .PROJECTED_LOW_GLUCOSE:  return "GOING LOW"
-        case .GLUCOSE_OK:             return "OK"
-        case .PROJECTED_HIGH_GLUCOSE: return "GOING HIGH"
-        case .HIGH_GLUCOSE:           return "HIGH"
-        default:                      return ""
-        }
-    }
-}
