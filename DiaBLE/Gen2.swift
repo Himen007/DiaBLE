@@ -1,0 +1,19 @@
+import Foundation
+
+
+class Gen2 {
+
+    static let GEN2_CMD_DECRYPT_BLE_DATA = 773
+    static let GEN2_CMD_DECRYPT_NFC_DATA = 12545
+    static let GEN2_CMD_DECRYPT_NFC_STREAM = 6520
+    static let GEN2_CMD_END_SESSION = 37400
+    static let GEN2_CMD_GET_AUTH_CONTEXT = 28960
+    static let GEN2_CMD_GET_BLE_AUTHENTICATED_CMD = 6505
+    static let GEN2_CMD_GET_CREATE_SESSION = 29465
+    static let GEN2_CMD_GET_NFC_AUTHENTICATED_CMD = 6440
+    static let GEN2_CMD_GET_PVALUES = 6145
+    static let GEN2_CMD_INIT_LIB = 0
+    static let GEN2_CMD_PERFORM_SENSOR_CONTEXT_CRYPTO = 18712
+    static let GEN2_CMD_VERIFY_RESPONSE = 22321
+    
+}
