@@ -28,18 +28,20 @@ class Bubble: Transmitter {
     override class var dataReadCharacteristicUUID: String  { UUID.dataRead.rawValue }
 
     enum ResponseType: UInt8, CustomStringConvertible {
-        case dataInfo =            0x80
-        case dataPacket =          0x82
+        case dataInfo            = 0x80
+        case dataPacket          = 0x82
         case decryptedDataPacket = 0x88
-        case noSensor =            0xBF
-        case serialNumber =        0xC0
-        case patchInfo =           0xC1
+        case securityChallenge   = 0x8A
+        case noSensor            = 0xBF
+        case serialNumber        = 0xC0
+        case patchInfo           = 0xC1
 
         var description: String {
             switch self {
             case .dataInfo:            return "data info"
             case .dataPacket:          return "data packet"
             case .decryptedDataPacket: return "decrypted data packet"
+            case .securityChallenge:   return "security challenge"
             case .noSensor:            return "no sensor"
             case .serialNumber:        return "serial number"
             case .patchInfo:           return "patch info"
@@ -104,6 +106,18 @@ class Bubble: Transmitter {
                 main.settings.patchInfo = sensor!.patchInfo
                 main.settings.activeSensorSerial = sensor!.serial
                 log("\(name): patch info: \(sensor!.patchInfo.hex), sensor type: \(sensor!.type.rawValue), serial number: \(sensor!.serial)")
+
+            } else if response == .securityChallenge {
+                if buffer.count == 0 {
+                    buffer.append(data.suffix(from: 5))
+                } else if buffer.count == 15 {
+                    buffer.append(data.suffix(from: 4))
+                }
+                log("\(name): partial buffer size: \(buffer.count)")
+                if buffer.count == 28 {
+                    log("\(name): gen2 security challenge: \(buffer.prefix(25).hex)")
+                    buffer = Data()
+                }
 
             } else if response == .dataPacket || response == .decryptedDataPacket {
                 if buffer.count == 0 { sensor!.lastReadingDate = main.app.lastReadingDate }
