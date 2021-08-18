@@ -106,13 +106,13 @@ class MiaoMiao: Transmitter {
                 sensor!.age = Int(buffer[3]) << 8 + Int(buffer[4])
                 sensor!.uid = Data(buffer[5...12])
                 main.settings.patchUid = sensor!.uid
-                main.settings.activeSensorSerial = sensor!.serial
-                log("\(name): sensor age: \(sensor!.age) minutes (\(String(format: "%.1f", Double(sensor!.age)/60/24)) days), patch uid: \(sensor!.uid.hex), serial number: \(sensor!.serial)")
+                log("\(name): sensor age: \(sensor!.age) minutes (\(String(format: "%.1f", Double(sensor!.age)/60/24)) days), patch uid: \(sensor!.uid.hex)")
                 
                 if buffer.count >= 369 {
                     sensor!.patchInfo = Data(buffer[363...368])
                     main.settings.patchInfo = sensor!.patchInfo
-                    log("\(name): patch info: \(sensor!.patchInfo.hex) (sensor type: \(sensor!.type.rawValue))")
+                    main.settings.activeSensorSerial = sensor!.serial
+                    log("\(name): patch info: \(sensor!.patchInfo.hex), sensor type: \(sensor!.type.rawValue), serial number: \(sensor!.serial)")
                 } else {
                     // https://github.com/dabear/LibreOOPAlgorithm/blob/master/app/src/main/java/com/hg4/oopalgorithm/oopalgorithm/AlgorithmRunner.java
                     sensor!.patchInfo = Data([0xDF, 0x00, 0x00, 0x01, 0x01, 0x02])

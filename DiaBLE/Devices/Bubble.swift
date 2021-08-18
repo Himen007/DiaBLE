@@ -97,13 +97,13 @@ class Bubble: Transmitter {
             if response == .serialNumber {
                 sensor!.uid = Data(data[2...9])
                 main.settings.patchUid = sensor!.uid
-                main.settings.activeSensorSerial = sensor!.serial
-                log("\(name): patch uid: \(sensor!.uid.hex), serial number: \(sensor!.serial)")
+                log("\(name): patch uid: \(sensor!.uid.hex)")
 
             } else if response == .patchInfo {
                 sensor!.patchInfo = Data(Double(firmware)! < 1.35 ? data[3...8] : data[5...10])
                 main.settings.patchInfo = sensor!.patchInfo
-                log("\(name): patch info: \(sensor!.patchInfo.hex) (sensor type: \(sensor!.type.rawValue))")
+                main.settings.activeSensorSerial = sensor!.serial
+                log("\(name): patch info: \(sensor!.patchInfo.hex), sensor type: \(sensor!.type.rawValue), serial number: \(sensor!.serial)")
 
             } else if response == .dataPacket || response == .decryptedDataPacket {
                 if buffer.count == 0 { sensor!.lastReadingDate = main.app.lastReadingDate }
