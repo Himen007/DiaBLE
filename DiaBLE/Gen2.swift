@@ -43,13 +43,32 @@ class Gen2 {
         return 0
     }
 
-    static func p2(command: Int, p1: Int, _ d1: Data, _ d2: Data) -> Result {
+    static func p2(command: Int, p1: Int, _ d1: Data, _ d2: Data?) -> Result {
         return Result(data: Data(), error: nil)
     }
 
 
+    static func createSecureSession(context: Int) -> Int {
+        return p1(command: GEN2_CMD_END_SESSION, context, nil, nil)
+    }
+
     static func endSession(context: Int) -> Int {
         return p1(command: GEN2_CMD_END_SESSION, context, nil, nil)
+    }
+
+    static func getNfcAuthenticatedCommandBLE(command: Int, uid: SensorUid, challenge: Data, output: inout Data) -> Int {
+        let authContext = p1(command: GEN2_CMD_GET_AUTH_CONTEXT, 0, uid, nil)
+        if authContext < 0 {
+            return authContext
+        }
+        let commandArg = Data([1, UInt8(command)])
+        let result = p2(command: GEN2_CMD_GET_BLE_AUTHENTICATED_CMD, p1: authContext, commandArg, challenge)
+        if result.data == nil {
+            _ = Gen2.endSession(context: authContext)
+            return result.error != nil ? result.error!.rawValue : Gen2Error.GEN2_ERROR_PROCESS_ERROR.rawValue
+        }
+        output = result.data!
+        return authContext
     }
 
     static func getNfcAuthenticatedCommandNfc(command: Int, uid: SensorUid, challenge: Data, output: inout Data) -> Int {
@@ -66,6 +85,14 @@ class Gen2 {
         output = result.data!
         output[0 ... 3] = Data([2, 0xA1, 7, UInt8(command)])
         return authContext
+    }
+
+    static func decrytpNfcData(p1: Int, fromBlock: Int, count: Int, data: Data) -> Result {
+        return p2(command: GEN2_CMD_DECRYPT_NFC_STREAM, p1: p1, Data([UInt8(fromBlock), UInt8(count)]), data)
+    }
+
+    static func decryptStreamingData(p1: Int, data: Data) -> Result {
+        return p2(command: GEN2_CMD_DECRYPT_BLE_DATA, p1: p1, data, nil)
     }
 
 }
