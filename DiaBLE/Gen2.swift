@@ -34,17 +34,38 @@ class Gen2 {
     }
 
     struct Result {
-        let data: Data
+        let data: Data?
         let error: Gen2Error?
     }
 
 
-    static func p1(command: Int, _ i2: Int, _ d1: Data, _ d2: Data) -> Int {
+    static func p1(command: Int, _ i2: Int, _ d1: Data?, _ d2: Data?) -> Int {
         return 0
     }
 
     static func p2(command: Int, p1: Int, _ d1: Data, _ d2: Data) -> Result {
         return Result(data: Data(), error: nil)
+    }
+
+
+    static func endSession(context: Int) -> Int {
+        return p1(command: GEN2_CMD_END_SESSION, context, nil, nil)
+    }
+
+    static func getNfcAuthenticatedCommandNfc(command: Int, uid: SensorUid, challenge: Data, output: inout Data) -> Int {
+        let authContext = p1(command: GEN2_CMD_GET_AUTH_CONTEXT, 0, uid, nil)
+        if authContext < 0 {
+            return authContext
+        }
+        let commandArg = Data([0, UInt8(command)])
+        let result = p2(command: GEN2_CMD_GET_NFC_AUTHENTICATED_CMD, p1: authContext, commandArg, challenge)
+        if result.data == nil {
+            _ = Gen2.endSession(context: authContext)
+            return result.error != nil ? result.error!.rawValue : Gen2Error.GEN2_ERROR_PROCESS_ERROR.rawValue
+        }
+        output = result.data!
+        output[0 ... 3] = Data([2, 0xA1, 7, UInt8(command)])
+        return authContext
     }
 
 }
