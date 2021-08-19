@@ -3,6 +3,8 @@ import Foundation
 
 class Gen2 {
 
+    static let GEN_SECURITY_CMD_GET_SESSION_INFO = 0x1f
+
     static let GEN2_CMD_DECRYPT_BLE_DATA = 773
     static let GEN2_CMD_DECRYPT_NFC_DATA = 12545
     static let GEN2_CMD_DECRYPT_NFC_STREAM = 6520
@@ -48,8 +50,8 @@ class Gen2 {
     }
 
 
-    static func createSecureSession(_ i: Int, _ i2: Int, data: Data) -> Int {
-        return p1(command: GEN2_CMD_GET_CREATE_SESSION, i, Data([UInt8(i2)]), data)
+    static func createSecureSession(context: Int, _ i2: Int, data: Data) -> Int {
+        return p1(command: GEN2_CMD_GET_CREATE_SESSION, context, Data([UInt8(i2)]), data)
     }
 
     static func endSession(context: Int) -> Int {
@@ -87,12 +89,16 @@ class Gen2 {
         return authContext
     }
 
-    static func decrytpNfcData(p1: Int, fromBlock: Int, count: Int, data: Data) -> Result {
-        return p2(command: GEN2_CMD_DECRYPT_NFC_STREAM, p1: p1, Data([UInt8(fromBlock), UInt8(count)]), data)
+    static func decrytpNfcData(context: Int, fromBlock: Int, count: Int, data: Data) -> Result {
+        return p2(command: GEN2_CMD_DECRYPT_NFC_STREAM, p1: context, Data([UInt8(fromBlock), UInt8(count)]), data)
     }
 
-    static func decryptStreamingData(p1: Int, data: Data) -> Result {
-        return p2(command: GEN2_CMD_DECRYPT_BLE_DATA, p1: p1, data, nil)
+    static func streamingContext(uid: SensorUid, challenge: Data, output: inout Data) -> Int {
+        return getNfcAuthenticatedCommandBLE(command: GEN_SECURITY_CMD_GET_SESSION_INFO, uid: uid, challenge: challenge, output: &output)
+    }
+
+    static func decryptStreamingData(context: Int, data: Data) -> Result {
+        return p2(command: GEN2_CMD_DECRYPT_BLE_DATA, p1: context, data, nil)
     }
 
 }

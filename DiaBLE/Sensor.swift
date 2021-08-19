@@ -283,6 +283,10 @@ class Sensor: ObservableObject, Logging {
     var unlockCode: UInt32 = 42
     @Published var unlockCount: UInt16 = 0
 
+    // Gen2
+    var streamingAuthenticationData: Data = Data()    // security challenge
+
+
 
     init() {
     }
