@@ -48,8 +48,8 @@ class Gen2 {
     }
 
 
-    static func createSecureSession(context: Int) -> Int {
-        return p1(command: GEN2_CMD_END_SESSION, context, nil, nil)
+    static func createSecureSession(_ i: Int, _ i2: Int, data: Data) -> Int {
+        return p1(command: GEN2_CMD_GET_CREATE_SESSION, i, Data([UInt8(i2)]), data)
     }
 
     static func endSession(context: Int) -> Int {
