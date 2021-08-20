@@ -55,19 +55,19 @@ enum SensorFamily: Int, CustomStringConvertible {
 
 
 enum SensorRegion: Int, CustomStringConvertible {
-    case unknown    = 0
-    case european   = 1
-    case usa        = 2
-    case australian = 4
-    case eastern    = 8
+    case unknown            = 0
+    case european           = 1
+    case usa                = 2
+    case australianCanadian = 4
+    case eastern            = 8
 
     var description: String {
         switch self {
-        case .unknown:    return "unknown"
-        case .european:   return "European"
-        case .usa:        return "USA"
-        case .australian: return "Australian"
-        case .eastern:    return "Eastern"
+        case .unknown:            return "unknown"
+        case .european:           return "European"
+        case .usa:                return "USA"
+        case .australianCanadian: return "Australian / Canadian"
+        case .eastern:            return "Eastern"
         }
     }
 }
