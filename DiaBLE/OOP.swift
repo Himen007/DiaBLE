@@ -25,7 +25,7 @@ struct OOPServer {
     // /libre2ca/nfcAuth ("patchUid", "authData")
     // /libre2ca/nfcAuth2 ("p1", "authData")
     // /libre2ca/nfcData ("patchUid", "authData")
-    // libre2ca/nfcDataAlgorithm ("authData", "content", "patchUid", "patchInfo")
+    // /libre2ca/nfcDataAlgorithm ("p1", "authData", "content", "patchUid", "patchInfo")
 
 
     static let `default`: OOPServer = OOPServer(siteURL: "https://www.glucose.space",
