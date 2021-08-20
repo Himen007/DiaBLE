@@ -13,6 +13,21 @@ struct OOPServer {
     var bleHistoryEndpoint: String
     var activationEndpoint: String
 
+
+    // TODO: Gen2
+
+    // /openapi/xabetLibre libreoop2AndCalibrate("patchUid", "patchInfo", "content", "accesstoken" = "xabet-202104", "session")
+
+    // /libre2ca/bleAuth ("p1", "patchUid", "authData")
+    // /libre2ca/bleAuth2 ("p1", "authData")
+    // /libre2ca/bleAlgorithm ("p1", "pwd", "bleData", "patchUid", "patchInfo")
+
+    // /libre2ca/nfcAuth ("patchUid", "authData")
+    // /libre2ca/nfcAuth2 ("p1", "authData")
+    // /libre2ca/nfcData ("patchUid", "authData")
+    // libre2ca/nfcDataAlgorithm ("authData", "content", "patchUid", "patchInfo")
+
+
     static let `default`: OOPServer = OOPServer(siteURL: "https://www.glucose.space",
                                                 token: "bubble-201907",
                                                 calibrationEndpoint: "calibrateSensor",
